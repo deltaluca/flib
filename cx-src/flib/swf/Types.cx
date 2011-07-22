@@ -1,0 +1,41 @@
+package flib.swf;
+
+import haxe.io.Bytes;
+import haxe.Int32;
+
+typedef Swf = {
+	var compress:Bool;
+	var version:Int;
+	
+	var width:Int;
+	var height:Int;
+	
+	var framerate:Float;
+	var framecount:Int;
+	
+	var tags:Array<Tag>;
+}
+
+//--------------------------------------------------------------------------------------------------
+
+typedef RECT = {
+	var xmin:Int; var xmax:Int;
+	var ymin:Int; var ymax:Int;
+}
+
+//--------------------------------------------------------------------------------------------------
+
+enum Tag {
+	tUnknown (tagcode:Int, data:Bytes);
+	tFileAttributes(directBlit:Bool, useGPU:Bool, hasMetadata:Bool, useAS3:Bool, useNetwork:Bool);
+	tEnd;
+	tDoABC(abc:Bytes);
+	tDefABC(lazy:Bool,name:String,abc:Bytes);
+}
+
+class TagId {
+	public static inline var End = 0;
+	public static inline var FileAttributes = 69;
+	public static inline var DoABC = 72;
+	public static inline var DefABC = 82;
+}

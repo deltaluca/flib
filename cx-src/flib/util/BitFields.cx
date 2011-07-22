@@ -1,0 +1,70 @@
+package flib.util;
+
+import haxe.io.BytesInput;
+import haxe.io.BytesOutput;
+import haxe.Int32;
+
+$(mixin global i32(a) (Int32.ofInt(a)));
+$(mixin global i32(h,l) (Int32.make(h,l)));
+$(mixin global i31(a) (Int32.toNativeInt(a)));
+	
+$(mixin global eq(a,b) (Int32.compare(a,b)==0));
+$(mixin global neq(a,b)(Int32.compare(a,b)!=0));
+$(mixin global lt(a,b) (Int32.compare(a,b)< 0));
+$(mixin global gt(a,b) (Int32.compare(a,b)> 0));
+$(mixin global leq(a,b)(Int32.compare(a,b)<=0));
+$(mixin global geq(a,b)(Int32.compare(a,b)>=0));
+	
+$(mixin global add(a,b) (Int32.$add(a,b)));
+$(mixin global sub(a,b) (Int32.$sub(a,b)));
+$(mixin global lsh(a,b) (Int32.$shl(a,b)));
+$(mixin global rsh(a,b) (Int32.$shr(a,b)));
+$(mixin global ursh(a,b) (Int32.$ushr(a,b)));
+$(mixin global and(a,b) (Int32.$and(a,b)));
+$(mixin global or(a,b) (Int32.$or(a,b)));
+	
+$(mixin global neg(a) (Int32.$neg(a)));
+$(mixin global not(a) (Int32.complement(a)));
+$(mixin global inc(a) (a=add(a,one)));
+$(mixin global dec(a) (a=add(a,none)));
+	
+$(mixin global zero i32(0));
+$(mixin global one i32(1));
+$(mixin global none i32(0xffff,0xffff));
+
+class BitFields {
+	public inline static function bits_signed(v:Int32) {
+		if eq(v,zero) return 0;
+		else if eq(v,none) return 2;
+		else {
+			var sign = if lt(v,zero) one else zero;
+			var cbit = 31;
+			while eq(ursh(and(v,lsh(one,cbit)),cbit),sign) cbit--;
+			return cbit+2;
+		}
+	}
+	
+	public inline static function bits_unsigned(v:Int32) {
+		if eq(v,zero) return 0;
+		else {
+			var cbit = 31;
+			while eq(ursh(and(v,lsh(one,cbit)),cbit),zero) cbit--;
+			return cbit+1;
+		}
+	}
+	
+	public inline static function floating_int(v:Float) {
+		var sbot = Std.int(v*65536.0) & 0xffff;
+		if(sbot<0) sbot = -sbot;
+		
+		var stop = Std.int(v);
+		if(stop<0) stop = -stop;
+		
+		var vt = or(i32(sbot),lsh(i32(stop),16));
+		if(v<0) vt = neg(vt);
+		
+		return vt;
+	}
+	
+	public inline static function bits_floating(v:Float) return bits_signed(floating_int(v))
+}

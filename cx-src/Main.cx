@@ -1,0 +1,280 @@
+package;
+
+import haxe.Int32;
+import haxe.io.BytesOutput;
+import haxe.io.BytesInput;
+import haxe.io.Bytes;
+
+import neko.Sys;
+import neko.Lib;
+import neko.io.File;
+import neko.io.Path;
+
+import flib.abc.Types;
+import flib.swf.Types;
+
+import flib.util.BitFields;
+	
+using StringTools;
+
+class Main {
+	static function main() {		
+		var args = Sys.args();
+		if(args.length<1) {
+			Lib.println("For help use --help option");
+			Sys.exit(1);
+		}
+		if(args[0]=="--help") {
+			Lib.println("Usage: flib lib.swc");
+			Lib.println("\t@ var x(flibget_x,flibset_x), has 'x' removed, and flibget_x flibset_x turned to native getter/setters. flibget_x flibset_x must be inlined to avoid haxe code being destroyed");
+			Lib.println("\t @ @:ns(\"flibdel\") inline function x() {} get's removed from the swc entirely, make sure this method is also inlined and is not used dynamicaly through down-casting/reflection or else it will break haxe code");
+			Sys.exit(0);
+		}
+		
+		var src = args[0];
+		
+		//------------------------------------------------------------------------------------------
+		//grab internal swf
+		#if windows
+			if(Sys.command("7z",["-y","e",src,"library.swf"])!=0) {
+				Lib.println("ERROR please make sure 7z has been added to PATH variables");
+				Sys.exit(1);
+			}
+		#elseif unix
+			Sys.command("unzip",[src,"library.swf"]);
+		#else
+			Lib.println("please specify compiler flag windows or unix on compilation of flib");
+			Sys.exit(1);
+		#end
+		
+		//------------------------------------------------------------------------------------------
+		//process loaded swf
+		var inp = File.read("library.swf",true);
+		var reader = new flib.swf.Reader(inp);
+		var swf = reader.readSwf();
+		inp.close();
+		
+		var ntags = [];
+		for(tag in swf.tags) {
+			ntags.push(switch(tag) {
+				default:
+					tag;
+				case tDoABC(abcdata):
+					tDoABC(doABC(abcdata));
+				case tDefABC(lazy,name,abcdata):
+					tDefABC(lazy,name,doABC(abcdata));
+			});
+		}
+		swf.tags = ntags;
+		
+		//------------------------------------------------------------------------------------------
+		//create new swf
+		var out = File.write("library.swf",true);
+		var writer = new flib.swf.Writer(out);
+		writer.writeSwf(swf);
+		out.flush();
+		out.close();
+			
+		//------------------------------------------------------------------------------------------
+		//inject new swf
+		#if windows
+			Sys.command("7z",["-y","a","-tzip",src,"library.swf"]);
+			Sys.command("del",["library.swf"]);
+		#else
+			Sys.command("zip",["-u",src,"library.swf"]);
+			Sys.command("rm",["library.swf"]);
+		#end
+	}
+	
+	//----------------------------------------------------------------------------------------------
+	
+	private static function doABC(abcdata:Bytes) {
+		var reader = new flib.abc.Reader(new BytesInput(abcdata));
+		var abc = reader.readABC();
+		
+		$(mixin string(n) abc.cpool.strings[n-1]);
+		$(mixin multiname(n) ({
+			var n2 = abc.cpool.names[n-1];
+			switch(n2) {
+				case mQName(_,_,name): string(name);
+				case mRTQName(_,name): string(name);
+				case mMultiname(_,name,_): string(name);
+				default: "";
+			}
+		}));
+		$(mixin flibdel(n) ({
+			var n2 = abc.cpool.names[n-1];
+			switch(n2) {
+				case mQName(_,ns,name):
+					var n3 = abc.cpool.nspaces[ns-1];
+					string(n3.name);
+				default: "";
+			}
+		}));
+		
+		var methodid = new Array<Int>();
+		var id = 0;
+		for(i in abc.methods) methodid.push(id++);
+		
+		$(mixin getsets(instances)
+			for(i in instances) {
+				var properties = new Hash<{x:Trait,y:Trait}>();
+				var flibrem = new Hash<Void>();
+				
+				for(t in i.traits) {
+					switch(t.data) {
+						case tdMethod(type,x,y):
+							if(Type.enumEq(type,mtMethod)) {
+								var flibd = flibdel(t.name);
+								var name = multiname(t.name);
+								
+								if(flibd=="flibdel")
+									flibrem.set(name,null);
+								if(flibd=="" && name.substr(0,8)=="flibdel_" && name.length>8) {
+									flibrem.set(name,null);
+									flibrem.set(name.substr(8),null);
+								}
+								
+								if(name.length > 8 && name.startsWith("flibset_")) {
+									var varn = name.substr(8);
+									if(properties.exists(varn))
+										properties.get(varn).y = t;
+									else
+										properties.set(varn,{x:null,y:t});
+										
+									t.data = tdMethod(mtSetter,x,y);
+								}
+								if(name.length > 8 && name.startsWith("flibget_")) {
+									var varn = name.substr(8);
+									if(properties.exists(varn))
+										properties.get(varn).x = t;
+									else
+										properties.set(varn,{x:t,y:null});						
+										
+									t.data = tdMethod(mtGetter,x,y);
+								}
+							}
+						case tdSlot(const,sid,_,_,_):
+							var flibd = flibdel(t.name);
+							var name = multiname(t.name);
+							
+							if(flibd=="flibdel")
+								flibrem.set(name,null);
+							if(flibd=="" && name.substr(0,8)=="flibdel_" && name.length>8) {
+								//trace(name);
+								flibrem.set(name,null);
+								flibrem.set(name.substr(8),null);
+							}
+						default:
+					}
+				}
+				
+				var ntraits = [];
+				for(t in i.traits) {
+					switch(t.data) {
+						case tdMethod(type,_,id):
+							if(Type.enumEq(type,mtMethod)) {
+								var name = multiname(t.name);
+								if(!flibrem.exists(name))
+									ntraits.push(t);
+								else {
+									methodid.remove(id);
+								}
+							}else
+								ntraits.push(t);
+						case tdSlot(const,_,_,_,_):
+							var name = multiname(t.name);
+							if(flibrem.exists(name))
+								continue;
+							if(!const) {	
+								if(properties.exists(name)) {
+									var p = properties.get(name);
+									
+									if(p.x!=null) p.x.name = t.name;
+									if(p.y!=null) p.y.name = t.name;
+									
+									continue;
+								}
+							}
+							ntraits.push(t);
+						default:
+							ntraits.push(t);
+					}
+				}
+				
+				i.traits = ntraits;
+			}
+		);
+		
+		getsets(abc.instances)
+		getsets(abc.classes)
+		
+		//maps old method index, to new method index
+		/*var methodset = new IntHash<Int>();
+		var ind = 0;
+		for(i in methodid) methodset.set(i,ind++);
+		
+		ind = 0;
+		var i = 0;
+		while(true) {
+			if(i>=abc.methods.length) break;
+			var method = abc.methods[i];
+			if(methodset.exists(ind)) {
+				i++;
+				ind++;
+				continue;
+			}
+
+			abc.methods.splice(i,1);
+			ind++;
+			continue;
+		}
+		
+		var i = 0;
+		while(true) {
+			if(i>=abc.mbodies.length) break;
+			var mbody = abc.mbodies[i];
+			if(methodset.exists(mbody.method)) {
+				i++;
+				continue;
+			}
+			
+			abc.mbodies.splice(i,1);
+			continue;
+		}
+		
+		for(i in abc.instances) {
+			i.iinit = methodset.get(i.iinit);
+			adtraits(i.traits);
+		}
+		for(i in abc.classes) {
+			i.cinit = methodset.get(i.cinit);
+			adtraits(i.traits);
+		}
+		for(i in abc.scripts) {
+			i.init = methodset.get(i.init);
+			adtraits(i.traits);
+		}
+		for(i in abc.mbodies) {
+			i.method = methodset.get(i.method);
+			adtraits(i.traits);
+		}
+		
+		$(mixin adtraits(traits) {
+			for(i in traits) {
+				i.data = switch(i.data) {
+					case tdFunction(sid,mid):
+						tdFunction(sid,methodset.get(mid));
+					case tdMethod(type,sid,mid):
+						tdMethod(type,sid,methodset.get(mid));
+					default: i.data;
+				}
+			}
+		});
+		*/
+		var out = new BytesOutput();
+		var writer = new flib.abc.Writer(out);
+		writer.writeABC(abc);
+		return out.getBytes();
+	}
+}

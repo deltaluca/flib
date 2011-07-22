@@ -1,1 +1,3 @@
 To compile just use makefile.
+
+Note, that for windows you need to have 7-zip library installed. This is available at www.7-zip.org and is used for command line zipping and unzipping of archives (.swc)

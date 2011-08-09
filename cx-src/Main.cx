@@ -69,6 +69,11 @@ class Main {
 		
 		//------------------------------------------------------------------------------------------
 		//create new swf
+		#if windows
+			Sys.command("del",["library.swf"]);
+		#else
+			Sys.command("rm",["library.swf"]);
+		#end
 		var out = File.write("library.swf",true);
 		var writer = new flib.swf.Writer(out);
 		writer.writeSwf(swf);
@@ -76,12 +81,13 @@ class Main {
 		out.close();
 			
 		//------------------------------------------------------------------------------------------
-		//inject new swf
+		//inject new swfi
 		#if windows
 			Sys.command("7z",["-y","a","-tzip",src,"library.swf"]);
 			Sys.command("del",["library.swf"]);
 		#else
-			Sys.command("zip",["-u",src,"library.swf"]);
+		    Sys.command("zip",[src,"-d","library.swf"]);
+			Sys.command("zip",[src,"library.swf"]);
 			Sys.command("rm",["library.swf"]);
 		#end
 	}

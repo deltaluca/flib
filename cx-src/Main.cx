@@ -359,10 +359,10 @@ class Main {
 		getsets(abc.classes)
 		
 		//maps old method index, to new method index
-		/*var methodset = new IntHash<Int>();
+		var methodset = new IntHash<Int>();
 		var ind = 0;
 		for(i in methodid) methodset.set(i,ind++);
-		
+		/*
 		ind = 0;
 		var i = 0;
 		while(true) {
@@ -378,7 +378,7 @@ class Main {
 			ind++;
 			continue;
 		}
-		
+*/		
 		var i = 0;
 		while(true) {
 			if(i>=abc.mbodies.length) break;
@@ -391,7 +391,7 @@ class Main {
 			abc.mbodies.splice(i,1);
 			continue;
 		}
-		
+/*		
 		for(i in abc.instances) {
 			i.iinit = methodset.get(i.iinit);
 			adtraits(i.traits);

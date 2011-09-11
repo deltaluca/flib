@@ -98,9 +98,16 @@ class Main {
 						doreport(abcdata,ret);
 				}
 			}
+
+			var total = 0;
 			ret.sort(function (a,b) return b.size-a.size);
-			for(i in ret)
+			for(i in ret) {
 				Lib.println(i.str);
+				total += i.size;
+			}
+
+			Lib.println("-------");
+			Lib.println("total: "+duh(total));
 
 		}else {
 

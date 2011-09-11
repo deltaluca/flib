@@ -52,6 +52,7 @@ class Main {
 		//grab internal swf if using a .swc
 
 		var swc = StringTools.endsWith(src,".swc");
+		var swcsrc = src;
 		if(swc) {
 			#if windows
 				if(Sys.command("7z",["-y","e",src,"library.swf"])!=0) {
@@ -136,11 +137,11 @@ class Main {
 	
 			if(swc) {
 				#if windows
-					Sys.command("7z",["-y","a","-tzip",src,"library.swf"]);
+					Sys.command("7z",["-y","a","-tzip",swcsrc,"library.swf"]);
 					Sys.command("del",["library.swf"]);
 				#else
-				    Sys.command("zip",[src,"-d","library.swf"]);
-					Sys.command("zip",[src,"library.swf"]);
+				    Sys.command("zip",[swcsrc,"-d","library.swf"]);
+					Sys.command("zip",[swcsrc,"library.swf"]);
 					Sys.command("rm",["library.swf"]);
 				#end
 			}

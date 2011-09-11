@@ -89,13 +89,14 @@ class Main {
 			//process ABC blocks for size report.
 
 			var ret:Array<SIZE> = [];
+			var cls:Hash<Int> = new Hash<Int>();
 			for(tag in swf.tags) {
 				switch(tag) {
 					default:
 					case tDoABC(abcdata):
-						doreport(abcdata,ret);
+						doreport(abcdata,ret,cls);
 					case tDefABC(_,_,abcdata):
-						doreport(abcdata,ret);
+						doreport(abcdata,ret,cls);
 				}
 			}
 
@@ -106,6 +107,22 @@ class Main {
 				total += i.size;
 			}
 
+			Lib.println("\n");
+			Lib.println("-------");
+			var carr = new Array<SIZE>();
+			for(x in cls.keys()) {
+				carr.push({size:cls.get(x),str:x});
+			}
+			carr.sort(function (a,b) return b.size-a.size);
+			for(i in carr) {
+				var str = ""+duh(i.size);
+				while(str.length<10) str += " ";
+				str += i.str;
+
+				Lib.println(str);
+			}
+
+			Lib.println("\n");
 			Lib.println("-------");
 			Lib.println("total: "+duh(total));
 
@@ -165,7 +182,7 @@ class Main {
 		else return fix100(bytes/1024/1024)+"MiB";
 	}
 
-	private static function doreport(abcdata:Bytes, ret:Array<SIZE>) {
+	private static function doreport(abcdata:Bytes, ret:Array<SIZE>, cls:Hash<Int>) {
 		var reader = new flib.abc.Reader(new BytesInput(abcdata));
 		var abc = reader.readABC();
 				
@@ -187,6 +204,7 @@ class Main {
 		}));
 
 		var names = new Array<String>();
+		var cnames = new Array<String>();
 		for(i in abc.instances) {
 			var clsname = multiname(i.name);
 			for(t in i.traits) {
@@ -199,10 +217,12 @@ class Main {
 							names[mid] = clsname+"::set "+name;
 						else
 							names[mid] = clsname+"::get "+name;
+						cnames[mid] = clsname;
 					default:
 				}
 			}
 			names[i.iinit] = clsname+"::new";
+			cnames[i.iinit] = clsname;
 		}
 
 		var ind = 0;
@@ -219,10 +239,12 @@ class Main {
 							names[mid] = clsname+".set "+name;
 						else
 							names[mid] = clsname+".get "+name;
+						cnames[mid] = clsname;
 					default:
 				}
 			}
 			names[i.cinit] = clsname+".__init__";
+			cnames[i.cinit] = clsname;
 		}
 
 		for(m in abc.mbodies) {
@@ -231,6 +253,10 @@ class Main {
 				while(str.length<10) str += " ";
 				str += names[m.method];
 				ret.push({size:m.avm.length,str:str});
+
+				var cname = cnames[m.method];
+				var cn = if(cls.exists(cname)) cls.get(cname) else 0;
+				cls.set(cname,cn+m.avm.length);
 			}
 		}
 	}

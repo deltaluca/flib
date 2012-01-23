@@ -286,7 +286,29 @@ class Main {
 				default: "";
 			}
 		}));
-		
+
+		//class constructor optionals
+		for(i in abc.instances) {
+			var meth = abc.methods[i.iinit];
+			var count = 0;
+
+			for(t in i.traits) {
+				switch(t.data) {
+				case tdMethod(type,x,y):
+					if(Type.enumEq(type,mtMethod)) {
+						var flibd = flibdel(t.name);
+						var name = multiname(t.name);
+						if(name.substr(0,9)=="flibopts_") 
+							count = Std.parseInt(name.substr(9));
+					}
+				default:
+				}
+			}
+
+			while(meth.optionals.length != count)
+				meth.optionals.shift();
+		}
+	
 		var methodid = new Array<Int>();
 		var id = 0;
 		for(i in abc.methods) methodid.push(id++);
@@ -383,7 +405,8 @@ class Main {
 		
 		getsets(abc.instances)
 		getsets(abc.classes)
-		
+
+	
 		//maps old method index, to new method index
 		var methodset = new IntHash<Int>();
 		var ind = 0;

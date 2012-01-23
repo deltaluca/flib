@@ -290,7 +290,7 @@ class Main {
 		//class constructor optionals
 		for(i in abc.instances) {
 			var meth = abc.methods[i.iinit];
-			var count = 0;
+			var count = -1;
 
 			for(t in i.traits) {
 				switch(t.data) {
@@ -304,6 +304,8 @@ class Main {
 				default:
 				}
 			}
+
+			if(count==-1) continue;
 
 			while(meth.optionals.length != count)
 				meth.optionals.shift();

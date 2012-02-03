@@ -92,11 +92,32 @@ class Reader {
 			case TagId.End:
 				null;
 			case TagId.DoABC:
-				return tDoABC(o.read(tagl));
+				tDoABC(o.read(tagl));
 			case TagId.DefABC:
 				var lazy = eq(o.readInt32(),one);
 				var name = o.readString();
-				return tDefABC(lazy,name,o.read(sub(tagl,i32(4+name.length+1))));
+				tDefABC(lazy,name,o.read(sub(tagl,i32(4+name.length+1))));
+			case TagId.DefineBinaryData:
+				var tag = o.readUInt16();
+				o.readInt32();
+				var data = o.read(sub(tagl,Int32.ofInt(8)));
+				tDefineBinaryData(tag,data); 
+			case TagId.SetBackgroundColor:
+				var r = o.readByte();
+				var g = o.readByte();
+				var b = o.readByte();
+				tSetBackgroundColor((r<<16)|(g<<8)|b);
+			case TagId.ShowFrame:
+				tShowFrame;
+			case TagId.SymbolClass:
+				var symbols:Array<{tag:Int,name:String}> = [];
+				var num = o.readUInt16();
+				while(num-->0) {
+					var tag = o.readUInt16();
+					var str = o.readString();
+					symbols.push({tag:tag,name:str});
+				}
+				tSymbolClass(symbols);
 		};
 	}
 	

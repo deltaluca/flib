@@ -31,11 +31,19 @@ enum Tag {
 	tEnd;
 	tDoABC(abc:Bytes);
 	tDefABC(lazy:Bool,name:String,abc:Bytes);
+	tDefineBinaryData(tag:Int,data:Bytes);
+	tSetBackgroundColor(rgb:Int);
+	tShowFrame;
+	tSymbolClass(symbols:Array<{tag:Int,name:String}>);
 }
 
 class TagId {
 	public static inline var End = 0;
+	public static inline var ShowFrame = 1;
+	public static inline var SetBackgroundColor = 9;
 	public static inline var FileAttributes = 69;
 	public static inline var DoABC = 72;
 	public static inline var DefABC = 82;
+	public static inline var DefineBinaryData = 87;
+	public static inline var SymbolClass = 76;
 }

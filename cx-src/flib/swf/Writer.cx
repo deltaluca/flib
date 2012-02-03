@@ -107,6 +107,29 @@ class Writer {
 					o.writeString(name);
 					o.writeBytes(abc,0,abc.length);
 					popWriteHeader(TagId.DefABC);
+				case tDefineBinaryData(tag,data):
+					pushOut();
+					o.writeUInt16(tag);
+					o.writeInt32(Int32.ofInt(0));
+					o.writeBytes(data,0,data.length);
+					popWriteHeader(TagId.DefineBinaryData);
+				case tSetBackgroundColor(rgb):
+					pushOut();
+					o.writeByte((rgb>>16)&0xff);
+					o.writeByte((rgb>>8)&0xff);
+					o.writeByte(rgb&0xff);
+					popWriteHeader(TagId.SetBackgroundColor);
+				case tShowFrame:
+					pushOut();
+					popWriteHeader(TagId.ShowFrame);
+				case tSymbolClass(symbols):
+					pushOut();
+					o.writeUInt16(symbols.length);
+					for(sym in symbols) {
+						o.writeUInt16(sym.tag);
+						o.writeString(sym.name);
+					}
+					popWriteHeader(TagId.SymbolClass);
 				default:				
 			}
 		}

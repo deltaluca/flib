@@ -187,157 +187,72 @@ class Main {
 	}
 
 	static function combine(pre_src:String,main_src:String,out_src:String) {
-		var preswf = grab(pre_swc,false).swf;
-		var mainswf = grab(main_swc,false).swf;
-
-		
-	}
-
-	/*
-		
-		var src = args[0];
-		if(src=="--report") {
-			report = true;
-			if(args.length<2) {
-				Lib.println("ERROR --report needs argument");
-				Sys.exit(0);
+		//want to grab file data for stage size etc.
+		var mainswf = grab(main_src,false).swf;
+		var fattr:Tag = null;
+		var setbg:Tag = null;
+		for(tag in mainswf.tags) {
+			switch(tag) {
+			default:
+			case tFileAttributes(_,_,_,_,_):
+				fattr = tag;
+			case tSetBackgroundColor(_):
+				setbg = tag;
 			}
-			src = args[1];
+			if(fattr!=null && setbg!=null) break;
 		}
 
-		if(src=="--combine") {
-			combine = true;
-			if(args.length<3) {
-				Lib.println("ERROR --combine requires 2 arguments");
-				Sys.exit(0);
-			}
-			src = args[1];
-			src2 = args[2];
+		//grab template!
+		var bin = Sys.getEnv("FLIB");
+		if(bin==null) {
+			Lib.println("ERROR: Please make sure FLIB env-var is setup to point to the flib bin for template.swf");
+			Sys.exit(1);
 		}
-		
-		//------------------------------------------------------------------------------------------
-		//grab internal swf if using a .swc
+		var template = grab(bin+"/template.swf").swf;
 
-		var swc = StringTools.endsWith(src,".swc");
-		var swcsrc = src;
-		if(swc) {
-			#if windows
-				if(Sys.command("7z",["-y","e",src,"library.swf"])!=0) {
-					Lib.println("ERROR please make sure 7z has been added to PATH variables");
-					Sys.exit(1);
-				}
-			#elseif unix
-				Sys.command("unzip",[src,"library.swf"]);
-			#else
-				Lib.println("please specify compiler flag windows or unix on compilation of flib");
-				Sys.exit(1);
-			#end
-
-			src = "library.swf";
-		}
-		
-		//------------------------------------------------------------------------------------------
-		//process loaded swf
-		var inp = File.read(src,true);
-		var reader = new flib.swf.Reader(inp);
-		var swf = reader.readSwf();
+		//build binary data tags
+		var inp = File.read(pre_src,true);
+		var predat = tDefineBinaryData(0xfff0,inp.readAll());
 		inp.close();
-		
-		if(report) {
-			if(swc) {
-				#if windows
-					Sys.command("del",["library.swf"]);
-				#else
-					Sys.command("rm",["library.swf"]);
-				#end
-			}
 
-			//------------------------------------------------------------------------------------------
-			//process ABC blocks for size report.
+		var inp = File.read(main_src,true);
+		var maindat = tDefineBinaryData(0xfff2,inp.readAll());
+		inp.close();
 
-			var ret:Array<SIZE> = [];
-			var cls:Hash<Int> = new Hash<Int>();
-			for(tag in swf.tags) {
-				switch(tag) {
-					default:
-					case tDoABC(abcdata):
-						doreport(abcdata,ret,cls);
-					case tDefABC(_,_,abcdata):
-						doreport(abcdata,ret,cls);
-				}
-			}
+		//replace old file-attr and bg-col tags
+		template.tags.shift();
+		template.tags.shift();
+		template.tags.unshift(setbg);
+		template.tags.unshift(fattr);
 
-			var total = 0;
-			ret.sort(function (a,b) return b.size-a.size);
-			for(i in ret) {
-				Lib.println(i.str);
-				total += i.size;
-			}
+		//remove template metadata
+		template.tags.splice(1,1);
 
-			Lib.println("\n");
-			Lib.println("-------");
-			var carr = new Array<SIZE>();
-			for(x in cls.keys()) {
-				carr.push({size:cls.get(x),str:x});
-			}
-			carr.sort(function (a,b) return b.size-a.size);
-			for(i in carr) {
-				var str = ""+duh(i.size);
-				while(str.length<10) str += " ";
-				str += i.str;
+		//insert binary data
+		template.tags.insert(5, predat);
+		template.tags.insert(7, maindat);
 
-				Lib.println(str);
-			}
+		//append symbol data
+		var symbols = switch(template.tags[4]) {
+			default: null;
+			case tSymbolClass(xs): xs;
+		};
+		symbols.push({
+			tag:0xfff0,
+			name:"LoaderBytes"
+		});
+		symbols.push({
+			tag:0xfff2,
+			name:"MainBytes"
+		});
 
-			Lib.println("\n");
-			Lib.println("-------");
-			Lib.println("total: "+duh(total));
-
-		}else {
-
-			//------------------------------------------------------------------------------------------
-			//process ABC blocks for replacements and deletions.
-			var ntags = [];
-			for(tag in swf.tags) {
-				ntags.push(switch(tag) {
-					default:
-						tag;
-					case tDoABC(abcdata):
-						tDoABC(doABC(abcdata));
-					case tDefABC(lazy,name,abcdata):
-						tDefABC(lazy,name,doABC(abcdata));
-				});
-			}
-			swf.tags = ntags;
-		
-			//------------------------------------------------------------------------------------------
-			//create new swf
-			#if windows
-				Sys.command("del",[src]);
-			#else
-				Sys.command("rm",[src]);
-			#end
-			var out = File.write(src,true);
-			var writer = new flib.swf.Writer(out);
-			writer.writeSwf(swf);
-			out.flush();
-			out.close();
-
-			//------------------------------------------------------------------------------------------
-			//inject new swf
-	
-			if(swc) {
-				#if windows
-					Sys.command("7z",["-y","a","-tzip",swcsrc,"library.swf"]);
-					Sys.command("del",["library.swf"]);
-				#else
-				    Sys.command("zip",[swcsrc,"-d","library.swf"]);
-					Sys.command("zip",[swcsrc,"library.swf"]);
-					Sys.command("rm",["library.swf"]);
-				#end
-			}
-		}
-	}*/
+		//write out to file :)
+		var out = File.write(out_src,true);
+		var writer = new flib.swf.Writer(out);
+		writer.writeSwf(template);
+		out.flush();
+		out.close();
+	}
 	
 	//----------------------------------------------------------------------------------------------
 

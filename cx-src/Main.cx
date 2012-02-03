@@ -20,6 +20,39 @@ using StringTools;
 typedef SIZE = {size:Int,str:String};
 
 class Main {
+	static function grab(src:String,keeplib=true):{swc:Bool,src:String,swf:Swf} {
+		var swc = StringTools.endsWith(src,".swc");
+		if(swc) {
+#if windows
+			if(Sys.command("7z",["-y","e",src,"library.swf"])!=0) {
+				Lib.println("ERROR please make sure 7z has been added to PATH variable");
+				Sys.exit(1);
+			}
+#elseif unix
+			Sys.command("unzip",[src,"library.swf"]);
+#else
+			Lib.println("Please specify compiler flag windows or unix on compilation of flib");
+			Sys.exit(1);
+#end
+			src = "library.swf";
+		}
+
+		var inp = File.read(src,true);
+		var reader = new flib.swf.Reader(inp);
+		var swf = reader.readSwf();
+		inp.close();
+		
+		if(swc && !keeplib) {
+#if windows
+			Sys.command("del",["library.swf"]);
+#else
+			Sys.command("rm",["library.swf"]);
+#end
+		}
+
+		return {swc:swc,src:src,swf:swf};
+	}
+
 	static function main() {		
 		var args = Sys.args();
 		if(args.length<1) {
@@ -27,16 +60,140 @@ class Main {
 			Sys.exit(1);
 		}
 	
-		var report = false;
-
 		if(args[0]=="--help") {
 			Lib.println("Usage: flib lib.swf/swc");
-			Lib.println("\t@ var x(flibget_x,flibset_x), has 'x' removed, and flibget_x flibset_x turned to native getter/setters. flibget_x flibset_x must be inlined to avoid haxe code being destroyed");
-			Lib.println("\t @ @:ns(\"flibdel\") inline function x() {} get's removed from the swc entirely, make sure this method is also inlined and is not used dynamicaly through down-casting/reflection or else it will break haxe code");
+			Lib.println("\tvar x(flibget_x,flibset_x), has 'x' removed, and flibget_x flibset_x turned to native getter/setters. flibget_x flibset_x must be inlined to avoid haxe code being destroyed");
+			Lib.println("\t@:ns(\"flibdel\") inline function x() {} get's removed from the swc entirely, make sure this method is also inlined and is not used dynamicaly through down-casting/reflection or else it will break haxe code");
+			Lib.println("\tfunction flibopts_#(){} with # replaced by integer, ensures that constructors for the class have the correct number of optional arguments set in the swf/swc as haxe makes them all optional");
 			Lib.println("\n");
 			Lib.println("Alternatively: flib --report lib.swf/swc to report method sizes throughout");
+			Lib.println("\n");
+			Lib.println("ALTERNATIVELY: flib --combine preloader.swf main.swf out.swf to combine the two swf's together into a single swf loading the preloader in first frame, and on dispatch of a flash event \"nextFrame\" will continue to frame 2 and load the main swf. Properties of the final swf is taken from main.swf (dimensions,bgcolor,fps)");
 			Sys.exit(0);
 		}
+
+		switch(args[0]) {
+		case "--report":
+			if(args.length<2) {
+				Lib.println("ERROR --report needs argument");
+				Sys.exit(0);
+			}
+			report(args[1]);
+
+		case "--combine":
+			if(args.length<4) {
+				Lib.println("ERROR --combine needs 3 arguments");
+				Sys.exit(0);
+			}
+			var pre  = args[1];
+			var main = args[2];
+			var outf = args[3];
+			combine(pre,main,outf);
+
+		default:
+			process(args[0]);
+		}
+	}
+
+	static function report(src:String) {
+		var swf = grab(src,false).swf;
+
+		//----------------------------------
+		//process ABC blocks for size report
+
+		var ret:Array<SIZE> = [];
+		var cls = new Hash<Int>();
+		for(tag in swf.tags) {
+			switch(tag) {
+			default:
+			case tDoABC(abcdata):
+				doreport(abcdata,ret,cls);
+			case tDefABC(_,_,abcdata):
+				doreport(abcdata,ret,cls);
+			}
+		}
+
+		var total = 0;
+		ret.sort(function (a,b) return b.size-a.size);
+		for(i in ret) {
+			Lib.println(i.str);
+			total += i.size;
+		}
+
+		Lib.println("\n");
+		Lib.println("--------");
+		var carr = new Array<SIZE>();
+		for(x in cls.keys())
+			carr.push({size:cls.get(x),str:x});
+		carr.sort(function (a,b) return b.size-a.size);
+
+		for(i in carr) {
+			var str = ""+duh(i.size);
+			while(str.length<10) str += " ";
+			str += i.str;
+			Lib.println(str);
+		}
+
+		Lib.println("\n");
+		Lib.println("--------");
+		Lib.println("total: "+duh(total));
+	}
+
+	static function process(src:String) {
+		var swcswf = grab(src);
+		var swf = swcswf.swf;
+
+		//------------------------------------------------------------------------------------------
+		//process ABC blocks for replacements and deletions.
+		var ntags = [];
+		for(tag in swf.tags) {
+			ntags.push(switch(tag) {
+			default:
+				tag;
+			case tDoABC(abcdata):
+				tDoABC(doABC(abcdata));
+			case tDefABC(lazy,name,abcdata):
+				tDefABC(lazy,name,doABC(abcdata));
+			});
+		}
+		swf.tags = ntags;
+	
+		//------------------------------------------------------------------------------------------
+		//create new swf
+#if windows
+		Sys.command("del",[swcswf.src]);
+#else
+		Sys.command("rm",[swcswf.src]);
+#end
+		var out = File.write(swcswf.src,true);
+		var writer = new flib.swf.Writer(out);
+		writer.writeSwf(swf);
+		out.flush();
+		out.close();
+
+		//------------------------------------------------------------------------------------------
+		//inject new swf
+
+		if(swcswf.swc) {
+#if windows
+			Sys.command("7z",["-y","a","-tzip",src,"library.swf"]);
+			Sys.command("del",["library.swf"]);
+#else
+		    Sys.command("zip",[src,"-d","library.swf"]);
+			Sys.command("zip",[src,"library.swf"]);
+			Sys.command("rm",["library.swf"]);
+#end
+		}
+	}
+
+	static function combine(pre_src:String,main_src:String,out_src:String) {
+		var preswf = grab(pre_swc,false).swf;
+		var mainswf = grab(main_swc,false).swf;
+
+		
+	}
+
+	/*
 		
 		var src = args[0];
 		if(src=="--report") {
@@ -46,6 +203,16 @@ class Main {
 				Sys.exit(0);
 			}
 			src = args[1];
+		}
+
+		if(src=="--combine") {
+			combine = true;
+			if(args.length<3) {
+				Lib.println("ERROR --combine requires 2 arguments");
+				Sys.exit(0);
+			}
+			src = args[1];
+			src2 = args[2];
 		}
 		
 		//------------------------------------------------------------------------------------------
@@ -170,7 +337,7 @@ class Main {
 				#end
 			}
 		}
-	}
+	}*/
 	
 	//----------------------------------------------------------------------------------------------
 

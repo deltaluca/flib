@@ -241,10 +241,13 @@ class Main {
 			tag:0xfff0,
 			name:"LoaderBytes"
 		});
-		symbols.push({
-			tag:0xfff2,
-			name:"MainBytes"
-		});
+
+		template.tags.insert(7, tSymbolClass([
+			{
+				tag:0xfff2,
+				name:"MainBytes"
+			}
+		]));
 
 		//write out to file :)
 		var out = File.write(out_src,true);

@@ -252,9 +252,6 @@ class Main {
 			}
 		]));
 
-		trace("\n\n\nOUTPUT\n\n\n");
-		trace(template);
-
 		//write out to file :)
 		var out = File.write(out_src,true);
 		var writer = new flib.swf.Writer(out);
@@ -451,7 +448,6 @@ class Main {
 							if(flibd=="flibdel")
 								flibrem.set(name,null);
 							if(flibd=="" && name.substr(0,8)=="flibdel_" && name.length>8) {
-								//trace(name);
 								flibrem.set(name,null);
 								flibrem.set(name.substr(8),null);
 							}

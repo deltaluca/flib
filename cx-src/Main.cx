@@ -227,9 +227,13 @@ class Main {
 		template.tags.unshift(setbg);
 		template.tags.unshift(fattr);
 
-		//and swap width-height
-		template.width = mainswf.width;
-		template.height = mainswf.height;
+		//and swap width-height etc
+		template.width     = mainswf.width;
+		template.height    = mainswf.height;
+		template.compress  = mainswf.compress;
+		template.version   = mainswf.version;
+		template.framerate = mainswf.framerate;
+		//framecount should remain 2!
 
 		//insert binary data
 		template.tags.insert(5, predat);

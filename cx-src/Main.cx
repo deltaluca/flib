@@ -20,6 +20,11 @@ using StringTools;
 typedef SIZE = {size:Int,str:String};
 
 class Main {
+	static function parse(src:haxe.io.Input):Swf {
+		var reader = new flib.swf.Reader(src);
+		var swf = reader.readSwf();
+		return swf;
+	}
 	static function grab(src:String,keeplib=true):{swc:Bool,src:String,swf:Swf} {
 		var swc = StringTools.endsWith(src,".swc");
 		if(swc) {
@@ -38,8 +43,7 @@ class Main {
 		}
 
 		var inp = File.read(src,true);
-		var reader = new flib.swf.Reader(inp);
-		var swf = reader.readSwf();
+		var swf = parse(inp);
 		inp.close();
 		
 		if(swc && !keeplib) {
@@ -203,12 +207,7 @@ class Main {
 		}
 
 		//grab template!
-		var bin = Sys.getEnv("FLIB");
-		if(bin==null) {
-			Lib.println("ERROR: Please make sure FLIB env-var is setup to point to the flib bin for template.swf");
-			Sys.exit(1);
-		}
-		var template = grab(bin+"/template.swf").swf;
+		var template = parse(new haxe.io.BytesInput(haxe.Resource.getBytes("bin/template.swf"))); 
 
 		//build binary data tags
 		var inp = File.read(pre_src,true);
@@ -219,14 +218,18 @@ class Main {
 		var maindat = tDefineBinaryData(0xfff2,inp.readAll());
 		inp.close();
 
+		//remove template metadata
+		template.tags.splice(1,1);
+
 		//replace old file-attr and bg-col tags
 		template.tags.shift();
 		template.tags.shift();
 		template.tags.unshift(setbg);
 		template.tags.unshift(fattr);
 
-		//remove template metadata
-		template.tags.splice(1,1);
+		//and swap width-height
+		template.width = mainswf.width;
+		template.height = mainswf.height;
 
 		//insert binary data
 		template.tags.insert(5, predat);
@@ -248,6 +251,9 @@ class Main {
 				name:"MainBytes"
 			}
 		]));
+
+		trace("\n\n\nOUTPUT\n\n\n");
+		trace(template);
 
 		//write out to file :)
 		var out = File.write(out_src,true);

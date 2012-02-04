@@ -1,3 +1,7 @@
-To compile just use makefile.
+Note: when using flib with .swc's and on windows, you will need the 7-zip library installed.
 
-Note, that for windows you need to have 7-zip library installed. This is available at www.7-zip.org and is used for command line zipping and unzipping of archives (.swc)
+Compilation from source requires 'caxe' to be installed (another of my github repos)
+
+Alternatively, I keep unix/windows neko builds in the bin folder which can be compiled to binaries locally with:
+	
+	nekotools boot bin/flib_#.n

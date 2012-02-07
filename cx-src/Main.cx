@@ -307,8 +307,10 @@ class Main {
 var out = "package "+pckg+";\n";
 	out+= "extern class "+clsname+" {\n";
 
-				function print_method(methid:Int,?name) {
-	out+= "    public function "+name+"(";
+				function print_method(methid:Int,?name,?overriden=false) {
+	out+= "    public ";
+					if(overriden) out += "override ";
+					out += "function "+name+"(";
 					var meth = abc.methods[methid];
 					for(i in 0...meth.param_types.length) {
 						if(i!=0) out += ",";
@@ -356,7 +358,7 @@ var out = "package "+pckg+";\n";
 					case tdMethod(type,_,mid):
 						var name = multiname(t.name);
 						if(Type.enumEq(type,mtMethod))
-							print_method(mid,name);
+							print_method(mid,name,t.overriden);
 						else {
 							var prop = props.get(name);
 							if(prop==null) props.set(name, prop = {getter:-1,setter:-1,name:name});
@@ -365,6 +367,10 @@ var out = "package "+pckg+";\n";
 								 prop.getter = mid;
 							else prop.setter = mid;
 						}
+					case tdSlot(_,_,type,_,_):
+						var name = multiname(t.name);
+						var type = multiname(type);
+	out += "    public var "+name+":"+type+";\n";
 					default:
 					}
 				}
@@ -536,7 +542,7 @@ var out = "package "+pckg+";\n";
 					if(Type.enumEq(type,mtMethod)) {
 						var flibd = flibdel(t.name);
 						var name = multiname(t.name);
-						if(name.substr(0,9)=="flibopts_") 
+						if(name.substr(0,9)=="flibopts_")
 							count = Std.parseInt(name.substr(9));
 					}
 				default:
@@ -566,6 +572,8 @@ var out = "package "+pckg+";\n";
 								var name = multiname(t.name);
 								
 								if(flibd=="flibdel")
+									flibrem.set(name,null);
+								if(flibd=="" && StringTools.startsWith(name,"flibopts_"))
 									flibrem.set(name,null);
 								if(flibd=="" && name.substr(0,8)=="flibdel_" && name.length>8) {
 									flibrem.set(name,null);

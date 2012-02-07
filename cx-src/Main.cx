@@ -307,9 +307,10 @@ class Main {
 var out = "package "+pckg+";\n";
 	out+= "extern class "+clsname+" {\n";
 
-				function print_method(methid:Int,?name,?overriden=false) {
+				function print_method(methid:Int,?name,?overriden=false,?statics=false) {
 	out+= "    public ";
 					if(overriden) out += "override ";
+					if(statics) out += "static ";
 					out += "function "+name+"(";
 					var meth = abc.methods[methid];
 					for(i in 0...meth.param_types.length) {
@@ -351,32 +352,42 @@ var out = "package "+pckg+";\n";
 				print_method(it.iinit,"new");
 
 				//deferred to gather getters and setters
-				var props = new Hash<{getter:Int,setter:Int,name:String}>();
+				var props = new Hash<{getter:Int,setter:Int,name:String,stat:Bool}>();
 
-				for(t in it.traits) {
-					switch(t.data) {
-					case tdMethod(type,_,mid):
-						var name = multiname(t.name);
-						if(Type.enumEq(type,mtMethod))
-							print_method(mid,name,t.overriden);
-						else {
-							var prop = props.get(name);
-							if(prop==null) props.set(name, prop = {getter:-1,setter:-1,name:name});
-
-							if(Type.enumEq(type,mtGetter))
-								 prop.getter = mid;
-							else prop.setter = mid;
+				$(mixin do_traits(traits,statics) {
+					for(t in traits) {
+						switch(t.data) {
+						case tdMethod(type,_,mid):
+							var name = multiname(t.name);
+							if(Type.enumEq(type,mtMethod))
+								print_method(mid,name,t.overriden,statics);
+							else {
+								var prop = props.get(name);
+								if(prop==null)
+									props.set(name, prop = {getter:-1,setter:-1,name:name,stat:statics});
+	
+								if(Type.enumEq(type,mtGetter))
+									 prop.getter = mid;
+								else prop.setter = mid;
+							}
+						case tdSlot(_,_,type,_,_):
+							var name = multiname(t.name);
+							var type = multiname(type);
+	out += "    public ";
+							if(statics) out += "static ";
+							out += "var "+name+":"+type+";\n";
+						default:
 						}
-					case tdSlot(_,_,type,_,_):
-						var name = multiname(t.name);
-						var type = multiname(type);
-	out += "    public var "+name+":"+type+";\n";
-					default:
 					}
-				}
+				});
+
+				do_traits(it.traits,false);
+				do_traits(cls.traits,true);
 
 				for(prop in props) {
-	out += "    public var "+prop.name+"(";
+	out += "    public ";
+					if(prop.stat) out += "static ";
+					out += "var "+prop.name+"(";
 					if(prop.getter!=-1) out += "default" else out += "never";
 					out += ",";
 					if(prop.setter!=-1) out += "default" else out += "never";
@@ -389,8 +400,21 @@ var out = "package "+pckg+";\n";
 				}
 
 	out+= "}\n";
+	
+				#if windows
+					var dir = (~/\./g).replace("externs."+pckg,"\\");
+					var path = dir + "\\" + clsname+".hx";
+				#else
+					var dir = (~/\./g).replace("externs."+pckg,"/");
+					var path = dir + "/" + clsname + ".hx";
+				#end
 
-				Lib.println(out);
+				cdir(dir);
+				var fout = neko.io.File.write(path,false);
+				Lib.println("Writing '"+path+"'");
+				fout.writeString(out);
+				fout.flush();
+				fout.close();
 			}
 		}
 
@@ -399,6 +423,21 @@ var out = "package "+pckg+";\n";
 			default:
 			case tDoABC(abcdata):			 doABC_externs(abcdata);
 			case tDefABC(lazy,name,abcdata): doABC_externs(abcdata);
+			}
+		}
+	}
+
+	static function cdir(dir:String) {
+		if(neko.FileSystem.exists(dir)) return;
+		if(dir=="") throw "wtf??";
+		try {
+			neko.FileSystem.createDirectory(dir);
+			Lib.println("Creating directory '"+dir+"'");
+		}catch(e:Dynamic) {
+			if(dir.indexOf(#if windows "\\" #else "/" #end)!=-1) {
+				var parent = dir.substr(0,dir.lastIndexOf(#if windows "\\" #else "/" #end));
+				cdir(parent);
+				cdir(dir);
 			}
 		}
 	}

@@ -428,7 +428,10 @@ var out = "package "+pckg+";\n";
 				else nstr;
 			case mRTQName(_,name): string(abc,name);
 			case mMultiname(_,name,_): string(abc,name);
-			default: "";
+			case mGenericName(_,params): "flash.Vector<"+multiname(abc,params[0])+">";
+			default: 
+				trace("fuck types!! "+Std.string(n2));
+				"";
 		}
 		return switch(ret) {
 			case "int": "Int";
@@ -436,6 +439,7 @@ var out = "package "+pckg+";\n";
 			case "void": "Void";
 			case "Boolean": "Bool";
 			case "Function": "Dynamic"; // yay
+			case "Array": "Array<Dynamic>"; // yay
 			default: ret;
 		}
 	}

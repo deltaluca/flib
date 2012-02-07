@@ -73,6 +73,8 @@ class Main {
 			Lib.println("Alternatively: flib --report lib.swf/swc to report method sizes throughout");
 			Lib.println("\n");
 			Lib.println("ALTERNATIVELY: flib --combine preloader.swf main.swf out.swf to combine the two swf's together into a single swf loading the preloader in first frame, and on dispatch of a flash event \"nextFrame\" will continue to frame 2 and load the main swf. Properties of the final swf is taken from main.swf (dimensions,bgcolor,fps)");
+			Lib.println("\n");
+			Lib.println("AND NOW!!: flib --externs lib.swf [package]+ to generate externs for haxe for the specific packages in the lib");
 			Sys.exit(0);
 		}
 
@@ -93,6 +95,14 @@ class Main {
 			var main = args[2];
 			var outf = args[3];
 			combine(pre,main,outf);
+
+		case "--externs":
+			if(args.length<3) {
+				Lib.println("ERROR --externs should have atleast 4 args");
+				Sys.exit(0);
+			}
+			var lib = args[1];
+			externs(lib,args.slice(2));
 
 		default:
 			process(args[0]);
@@ -266,6 +276,129 @@ class Main {
 	
 	//----------------------------------------------------------------------------------------------
 
+	static function externs(libsrc:String,packages:Array<String>) {
+		var swf = grab(libsrc,false).swf;
+	
+		function doABC_externs(abcdata:Bytes) {
+			var reader = new flib.abc.Reader(new BytesInput(abcdata));
+			var abc = reader.readABC();
+
+			var string = callback(string,abc);
+			var multiname = callback(multiname,abc);	
+
+			var proc = [];	
+			for(i in 0...abc.instances.length) {
+				var it = abc.instances[i];
+				var clsname = multiname(it.name);
+				for(pckg in packages) {
+					if(StringTools.startsWith(clsname,pckg+"."))
+						proc.push({it:it, cls:abc.classes[i], name:clsname});
+				}
+			}
+
+			for(ixy in proc) {
+				var name = ixy.name;
+				var it = ixy.it;
+				var cls = ixy.cls;
+
+				var pckg = name.substr(0,name.lastIndexOf("."));
+				var clsname = name.substr(pckg.length+1);
+
+var out = "package "+pckg+";\n";
+	out+= "extern class "+clsname+" {\n";
+
+				function print_method(methid:Int,?name) {
+	out+= "    public function "+name+"(";
+					var meth = abc.methods[methid];
+					for(i in 0...meth.param_types.length) {
+						if(i!=0) out += ",";
+
+						var name =
+							if(meth.param_names.length==0) "p"+i
+							else string(meth.param_names[i]);
+
+						out += name+":"+multiname(meth.param_types[i]);
+
+						var opt = i - (meth.param_types.length-meth.optionals.length);
+						if(opt>=0) {
+							var opt = meth.optionals[opt];
+							var optval = "";
+							switch(opt.kind) {
+							case nsOther(x):
+								switch(x) {
+								case 0: optval = "null";
+								case 1: optval = string(opt.value);
+								case 3: optval = Std.string(abc.cpool.ints[opt.value-1]);
+								case 4: optval = Std.string(abc.cpool.uints[opt.value-1]);
+								case 6: optval = Std.string(abc.cpool.doubles[opt.value-1]);
+								case 10: optval = "false";
+								case 11: optval = "true";
+								default:
+									trace("oh no "+Std.string(opt.kind));
+								}
+							default:
+								trace("oh no "+Std.string(opt.kind));	
+							}
+							if(optval!="")
+								out += "="+optval;
+						}
+					}
+					out += "):"+multiname(meth.return_type)+";\n";
+				}
+
+				print_method(it.iinit,"new");
+
+				//deferred to gather getters and setters
+				var props = new Hash<{getter:Int,setter:Int,name:String}>();
+
+				for(t in it.traits) {
+					switch(t.data) {
+					case tdMethod(type,_,mid):
+						var name = multiname(t.name);
+						if(Type.enumEq(type,mtMethod))
+							print_method(mid,name);
+						else {
+							var prop = props.get(name);
+							if(prop==null) props.set(name, prop = {getter:-1,setter:-1,name:name});
+
+							if(Type.enumEq(type,mtGetter))
+								 prop.getter = mid;
+							else prop.setter = mid;
+						}
+					default:
+					}
+				}
+
+				for(prop in props) {
+	out += "    public var "+prop.name+"(";
+					if(prop.getter!=-1) out += "default" else out += "never";
+					out += ",";
+					if(prop.setter!=-1) out += "default" else out += "never";
+					out += "):";
+
+					var mt = if(prop.getter==-1) prop.setter else prop.getter;
+					out += multiname(abc.methods[mt].return_type);
+
+					out += ";\n";
+				}
+
+	out+= "}\n";
+
+				Lib.println(out);
+			}
+		}
+
+		for(tag in swf.tags) {
+			switch(tag) {
+			default:
+			case tDoABC(abcdata):			 doABC_externs(abcdata);
+			case tDefABC(lazy,name,abcdata): doABC_externs(abcdata);
+			}
+		}
+	}
+
+	//----------------------------------------------------------------------------------------------
+
 	private static inline function duh(bytes:Int) {
 		$(mixin fix100(x) (Std.int((x)*100)/100));
 
@@ -274,26 +407,39 @@ class Main {
 		else return fix100(bytes/1024/1024)+"MiB";
 	}
 
+	private static function string(abc:ABC, n:Int) {
+		return abc.cpool.strings[n-1];
+	}
+	private static function multiname(abc:ABC, n:Int) {
+		if(n==0) return "Dynamic";
+		var n2 = abc.cpool.names[n-1];
+		var ret = switch(n2) {
+			case mQName(_,ns,name):
+				var pck = abc.cpool.nspaces[ns-1];
+				var pckstr = string(abc,pck.name);
+				var nstr = string(abc,name);
+				if(pckstr.length!=0) pckstr+"."+nstr;
+				else nstr;
+			case mRTQName(_,name): string(abc,name);
+			case mMultiname(_,name,_): string(abc,name);
+			default: "";
+		}
+		return switch(ret) {
+			case "int": "Int";
+			case "Number": "Float";
+			case "void": "Void";
+			case "Boolean": "Bool";
+			case "Function": "Dynamic"; // yay
+			default: ret;
+		}
+	}
+
 	private static function doreport(abcdata:Bytes, ret:Array<SIZE>, cls:Hash<Int>) {
 		var reader = new flib.abc.Reader(new BytesInput(abcdata));
 		var abc = reader.readABC();
-				
-		$(mixin string(n) abc.cpool.strings[n-1]);
-		$(mixin multiname(n) ({
-			var n2 = abc.cpool.names[n-1];
-			switch(n2) {
-//				case mQName(_,_,name): string(name);
-				case mQName(_,ns,name):
-					var pck = abc.cpool.nspaces[ns-1];
-					var pckstr = string(pck.name);
-					var nstr = string(name);
-					if(pckstr.length!=0) pckstr+"."+nstr;
-					else nstr;
-				case mRTQName(_,name): string(name);
-				case mMultiname(_,name,_): string(name);
-				default: "";
-			}
-		}));
+			
+		var string = callback(string,abc);
+		var multiname = callback(multiname,abc);	
 
 		var names = new Array<String>();
 		var cnames = new Array<String>();
@@ -301,16 +447,16 @@ class Main {
 			var clsname = multiname(i.name);
 			for(t in i.traits) {
 				switch(t.data) {
-					case tdMethod(type,_,mid):
-						var name = multiname(t.name);
-						if(Type.enumEq(type,mtMethod))
-							names[mid] = clsname+"::"+name;
-					 	else if(Type.enumEq(type,mtGetter))
-							names[mid] = clsname+"::set "+name;
-						else
-							names[mid] = clsname+"::get "+name;
-						cnames[mid] = clsname;
-					default:
+				case tdMethod(type,_,mid):
+					var name = multiname(t.name);
+					if(Type.enumEq(type,mtMethod))
+						names[mid] = clsname+"::"+name;
+				 	else if(Type.enumEq(type,mtGetter))
+						names[mid] = clsname+"::set "+name;
+					else
+						names[mid] = clsname+"::get "+name;
+					cnames[mid] = clsname;
+				default:
 				}
 			}
 			names[i.iinit] = clsname+"::new";
@@ -323,16 +469,16 @@ class Main {
 			ind++;
 			for(t in i.traits) {
 				switch(t.data) {
-					case tdMethod(type,_,mid):
-						var name = multiname(t.name);
-						if(Type.enumEq(type,mtMethod))
-							names[mid] = clsname+"."+name;
-					 	else if(Type.enumEq(type,mtGetter))
-							names[mid] = clsname+".set "+name;
-						else
-							names[mid] = clsname+".get "+name;
-						cnames[mid] = clsname;
-					default:
+				case tdMethod(type,_,mid):
+					var name = multiname(t.name);
+					if(Type.enumEq(type,mtMethod))
+						names[mid] = clsname+"."+name;
+				 	else if(Type.enumEq(type,mtGetter))
+						names[mid] = clsname+".set "+name;
+					else
+						names[mid] = clsname+".get "+name;
+					cnames[mid] = clsname;
+				default:
 				}
 			}
 			names[i.cinit] = clsname+".__init__";
@@ -363,19 +509,19 @@ class Main {
 		$(mixin multiname(n) ({
 			var n2 = abc.cpool.names[n-1];
 			switch(n2) {
-				case mQName(_,_,name): string(name);
-				case mRTQName(_,name): string(name);
-				case mMultiname(_,name,_): string(name);
-				default: "";
+			case mQName(_,_,name): string(name);
+			case mRTQName(_,name): string(name);
+			case mMultiname(_,name,_): string(name);
+			default: "";
 			}
 		}));
 		$(mixin flibdel(n) ({
 			var n2 = abc.cpool.names[n-1];
 			switch(n2) {
-				case mQName(_,ns,name):
-					var n3 = abc.cpool.nspaces[ns-1];
-					string(n3.name);
-				default: "";
+			case mQName(_,ns,name):
+				var n3 = abc.cpool.nspaces[ns-1];
+				string(n3.name);
+			default: "";
 			}
 		}));
 

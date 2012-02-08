@@ -74,7 +74,7 @@ class Main {
 			Lib.println("\n");
 			Lib.println("ALTERNATIVELY: flib --combine preloader.swf main.swf out.swf to combine the two swf's together into a single swf loading the preloader in first frame, and on dispatch of a flash event \"nextFrame\" will continue to frame 2 and load the main swf. Properties of the final swf is taken from main.swf (dimensions,bgcolor,fps)");
 			Lib.println("\n");
-			Lib.println("AND NOW!!: flib --externs lib.swf [package]+ to generate externs for haxe for the specific packages in the lib");
+			Lib.println("AND NOW!!: flib --externs lib.swf --include [package]+ [--exclude [package]+] to generate externs for haxe for the specific packages in the lib, whilst excluding any properties/methods which make reference to the excluded list of packages");
 			Lib.println("\n");
 			Lib.println("AND THEN!!: flib --strings lib.swc/swf to dump the cpool strings");
 			Sys.exit(0);
@@ -111,7 +111,19 @@ class Main {
 				Sys.exit(0);
 			}
 			var lib = args[1];
-			externs(lib,args.slice(2));
+
+			var incls = [];
+			var excls = [];
+			var including = false;
+			for(i in 2...args.length) {
+				var arg = args[i];
+				if     (arg=="--include") including = true;
+				else if(arg=="--exclude") including = false;
+				else if(including) incls.push(arg);
+				else               excls.push(arg);
+			}
+
+			externs(lib,incls,excls);
 
 		default:
 			process(args[0]);
@@ -305,7 +317,7 @@ class Main {
 
 	//----------------------------------------------------------------------------------------------
 
-	static function externs(libsrc:String,packages:Array<String>) {
+	static function externs(libsrc:String,includes:Array<String>,excludes:Array<String>) {
 		var swf = grab(libsrc,false).swf;
 	
 		function doABC_externs(abcdata:Bytes) {
@@ -313,15 +325,28 @@ class Main {
 			var abc = reader.readABC();
 
 			var string = callback(string,abc);
-			var multiname = callback(multiname,abc);	
+
+			var mult = callback(multiname,abc);
+			function multiname(id:Int) {
+				var ret = mult(id);
+				for(pckg in excludes) {
+					if(StringTools.startsWith(ret,pckg+"."))
+						throw ret;
+				}
+				return ret;
+			}
 
 			var proc = [];	
 			for(i in 0...abc.instances.length) {
 				var it = abc.instances[i];
-				var clsname = multiname(it.name);
-				for(pckg in packages) {
-					if(StringTools.startsWith(clsname,pckg+"."))
-						proc.push({it:it, cls:abc.classes[i], name:clsname});
+				try {
+					var clsname = multiname(it.name);
+					for(pckg in includes) {
+						if(StringTools.startsWith(clsname,pckg+"."))
+							proc.push({it:it, cls:abc.classes[i], name:clsname});
+					}
+				}catch(e:Dynamic) {
+					Lib.println("CLASS '"+e+"' EXCLUDED");
 				}
 			}
 
@@ -337,45 +362,54 @@ var out = "package "+pckg+";\n";
 	out+= "extern class "+clsname+" {\n";
 
 				function print_method(methid:Int,?name,?overriden=false,?statics=false) {
-	out+= "    public ";
-					if(overriden) out += "override ";
-					if(statics) out += "static ";
-					out += "function "+name+"(";
-					var meth = abc.methods[methid];
-					for(i in 0...meth.param_types.length) {
-						if(i!=0) out += ",";
-
-						var name =
-							if(meth.param_names.length==0) "p"+i
-							else string(meth.param_names[i]);
-
-						out += name+":"+multiname(meth.param_types[i]);
-
-						var opt = i - (meth.param_types.length-meth.optionals.length);
-						if(opt>=0) {
-							var opt = meth.optionals[opt];
-							var optval = "";
-							switch(opt.kind) {
-							case nsOther(x):
-								switch(x) {
-								case 0: optval = "null";
-								case 1: optval = string(opt.value);
-								case 3: optval = Std.string(abc.cpool.ints[opt.value-1]);
-								case 4: optval = Std.string(abc.cpool.uints[opt.value-1]);
-								case 6: optval = Std.string(abc.cpool.doubles[opt.value-1]);
-								case 10: optval = "false";
-								case 11: optval = "true";
+					//tentatively build method, allowing exception from multiname to cancel.
+					try {
+						var ret = "";
+	ret+= "    public ";
+						if(overriden) ret += "override ";
+						if(statics) ret += "static ";
+						ret += "function "+name+"(";
+						var meth = abc.methods[methid];
+						for(i in 0...meth.param_types.length) {
+							if(i!=0) ret += ",";
+	
+							var name =
+								if(meth.param_names.length==0) "p"+i
+								else string(meth.param_names[i]);
+	
+							ret += name+":"+multiname(meth.param_types[i]);
+	
+							var opt = i - (meth.param_types.length-meth.optionals.length);
+							if(opt>=0) {
+								var opt = meth.optionals[opt];
+								var optval = "";
+								switch(opt.kind) {
+								case nsOther(x):
+									switch(x) {
+									case 0: optval = "null";
+									case 1: optval = string(opt.value);
+									case 3: optval = Std.string(abc.cpool.ints[opt.value-1]);
+									case 4: optval = Std.string(abc.cpool.uints[opt.value-1]);
+									case 6: optval = Std.string(abc.cpool.doubles[opt.value-1]);
+									case 10: optval = "false";
+									case 11: optval = "true";
+									default:
+										trace("oh no "+Std.string(opt.kind));
+									}
 								default:
-									trace("oh no "+Std.string(opt.kind));
+									trace("oh no "+Std.string(opt.kind));	
 								}
-							default:
-								trace("oh no "+Std.string(opt.kind));	
+								if(optval!="")
+									ret += "="+optval;
 							}
-							if(optval!="")
-								out += "="+optval;
 						}
+						ret += "):"+multiname(meth.return_type)+";\n";
+	
+						//success!!
+						out += ret;
+					}catch(e:Dynamic) {
+						Lib.println("METHOD '"+pckg+"."+clsname+"::"+name+"' EXCLUDED: reason="+e);
 					}
-					out += "):"+multiname(meth.return_type)+";\n";
 				}
 
 				print_method(it.iinit,"new");
@@ -401,10 +435,14 @@ var out = "package "+pckg+";\n";
 							}
 						case tdSlot(_,_,type,_,_):
 							var name = multiname(t.name);
-							var type = multiname(type);
+							try {
+								var type = multiname(type);
 	out += "    public ";
-							if(statics) out += "static ";
-							out += "var "+name+":"+type+";\n";
+								if(statics) out += "static ";
+								out += "var "+name+":"+type+";\n";
+							}catch(e:Dynamic) {
+								Lib.println("VAR '"+pckg+"."+clsname+"::"+name+"' EXCLUDED: reason="+e);
+							}
 						default:
 						}
 					}

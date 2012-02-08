@@ -75,10 +75,19 @@ class Main {
 			Lib.println("ALTERNATIVELY: flib --combine preloader.swf main.swf out.swf to combine the two swf's together into a single swf loading the preloader in first frame, and on dispatch of a flash event \"nextFrame\" will continue to frame 2 and load the main swf. Properties of the final swf is taken from main.swf (dimensions,bgcolor,fps)");
 			Lib.println("\n");
 			Lib.println("AND NOW!!: flib --externs lib.swf [package]+ to generate externs for haxe for the specific packages in the lib");
+			Lib.println("\n");
+			Lib.println("AND THEN!!: flib --strings lib.swc/swf to dump the cpool strings");
 			Sys.exit(0);
 		}
 
 		switch(args[0]) {
+		case "--strings":
+			if(args.length<2) {
+				Lib.println("ERROR --strings needs argument");
+				Sys.exit(0);
+			}
+			strings(args[1]);
+
 		case "--report":
 			if(args.length<2) {
 				Lib.println("ERROR --report needs argument");
@@ -274,6 +283,26 @@ class Main {
 		out.close();
 	}
 	
+	//----------------------------------------------------------------------------------------------
+
+	static function strings(libsrc:String) {
+		var swf = grab(libsrc,false).swf;
+		
+		function doABC(abcdata:Bytes) {
+			var reader = new flib.abc.Reader(new BytesInput(abcdata));
+			var abc:ABC = reader.readABC();
+			Lib.println(abc.cpool.strings.join(","));
+		}
+
+		for(tag in swf.tags) {
+			switch(tag) {
+			default:
+			case tDoABC(abcdata):			 doABC(abcdata);
+			case tDefABC(lazy,name,abcdata): doABC(abcdata);
+			}
+		}
+	}
+
 	//----------------------------------------------------------------------------------------------
 
 	static function externs(libsrc:String,packages:Array<String>) {

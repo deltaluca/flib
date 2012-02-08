@@ -358,10 +358,32 @@ class Main {
 				var pckg = name.substr(0,name.lastIndexOf("."));
 				var clsname = name.substr(pckg.length+1);
 
-var out = "package "+pckg+";\n";
-	out+= "extern class "+clsname+" {\n";
+				var isinterface = (it.flags&4) != 0;
 
-				function print_method(methid:Int,?name,?overriden=false,?statics=false) {
+var out = "package "+pckg+";\n";
+	out+= "extern "+(isinterface ? "interface " : "class ")+clsname+" ";
+				var fst = true;
+				for(id in it.interfaces) {
+					if(!fst) out += ", ";
+					fst = false;
+					out += "implements " + multiname(id);
+				}
+				if(it.superc!=0) {
+					var sup = multiname(it.superc);
+					if(sup!="Object") { //lol
+						if(!fst) out += ", ";
+						fst = false;
+						out += "extends "+ sup;
+					}
+				}
+				if(!fst) out += " ";
+				out += "{\n";
+
+				function print_method(methid:Int,name:String,?overriden=false,?statics=false) {
+					//quick hack for interfaces
+					if(name.indexOf(".")!=-1)
+						name = name.substr(name.lastIndexOf(".")+1);
+
 					//tentatively build method, allowing exception from multiname to cancel.
 					try {
 						var ret = "";
@@ -412,7 +434,8 @@ var out = "package "+pckg+";\n";
 					}
 				}
 
-				print_method(it.iinit,"new");
+				if(!isinterface)
+					print_method(it.iinit,"new");
 
 				//deferred to gather getters and setters
 				var props = new Hash<{getter:Int,setter:Int,name:String,stat:Bool}>();

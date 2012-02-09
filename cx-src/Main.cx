@@ -370,7 +370,7 @@ var out = "package "+pckg+";\n";
 				}
 				if(it.superc!=0) {
 					var sup = multiname(it.superc);
-					if(sup!="Object") { //lol
+					if(sup!="Dynamic") { //lol
 						if(!fst) out += ", ";
 						fst = false;
 						out += "extends "+ sup;
@@ -569,6 +569,7 @@ var out = "package "+pckg+";\n";
 			case "Boolean": "Bool";
 			case "Function": "Dynamic"; // yay
 			case "Array": "Array<Dynamic>"; // yay
+			case "Object": "Dynamic"; //yay
 			default: ret;
 		}
 	}

@@ -132,6 +132,7 @@ class Main {
 
 	static function report(src:String) {
 		var swf = grab(src,false).swf;
+		Lib.println("swf version = "+swf.version);
 
 		//----------------------------------
 		//process ABC blocks for size report
@@ -303,7 +304,7 @@ class Main {
 		function doABC(abcdata:Bytes) {
 			var reader = new flib.abc.Reader(new BytesInput(abcdata));
 			var abc:ABC = reader.readABC();
-			Lib.println(abc.cpool.strings.join(","));
+			Lib.println(abc.cpool.strings.join("\n"));
 		}
 
 		for(tag in swf.tags) {

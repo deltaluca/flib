@@ -16,3 +16,12 @@ release:
 	mv bin/flib.n bin/flib_unix.n
 	make flib ARCH=windows
 	mv bin/flib.n bin/flib_windows.n
+
+as3lib:
+	caxe -o src cx-src --times
+	haxe -cp src --macro "include('flib')" -swf flib.swc -swf-version 10
+
+server-tar:
+	rm -f flib.tar.gz
+	tar cvfz flib.tar.gz cx-src Makefile bin/template.swf
+	scp flib.tar.gz deltaluca.me.uk:flib/flib.tar.gz

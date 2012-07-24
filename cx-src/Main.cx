@@ -14,7 +14,7 @@ import flib.abc.Types;
 import flib.swf.Types;
 
 import flib.util.BitFields;
-	
+
 using StringTools;
 
 typedef SIZE = {size:Int,str:String};
@@ -45,7 +45,7 @@ class Main {
 		var inp = File.read(src,true);
 		var swf = parse(inp);
 		inp.close();
-		
+
 		if(swc && !keeplib) {
 #if windows
 			Sys.command("del",["library.swf"]);
@@ -57,16 +57,16 @@ class Main {
 		return {swc:swc,src:src,swf:swf};
 	}
 
-	static function main() {		
+	static function main() {
 		var args = Sys.args();
 		if(args.length<1) {
 			Lib.println("For help use --help option");
 			Sys.exit(1);
 		}
-	
+
 		if(args[0]=="--help") {
 			Lib.println("Usage: flib lib.swf/swc");
-			Lib.println("\tvar x(flibget_x,flibset_x), has 'x' removed, and flibget_x flibset_x turned to native getter/setters. flibget_x flibset_x must be inlined to avoid haxe code being destroyed");
+			Lib.println("\tvar x(get_x,set_x), has 'x' removed, and get_x set_x turned to native getter/setters. get_x set_x must be inlined to avoid haxe code being destroyed");
 			Lib.println("\t@:ns(\"flibdel\") inline function x() {} get's removed from the swc entirely, make sure this method is also inlined and is not used dynamicaly through down-casting/reflection or else it will break haxe code");
 			Lib.println("\tfunction flibopts_#(){} with # replaced by integer, ensures that constructors for the class have the correct number of optional arguments set in the swf/swc as haxe makes them all optional");
 			Lib.println("\n");
@@ -193,7 +193,7 @@ class Main {
 			});
 		}
 		swf.tags = ntags;
-	
+
 		//------------------------------------------------------------------------------------------
 		//create new swf
 #if windows
@@ -239,7 +239,7 @@ class Main {
 		}
 
 		//grab template!
-		var template = parse(new haxe.io.BytesInput(haxe.Resource.getBytes("bin/template.swf"))); 
+		var template = parse(new haxe.io.BytesInput(haxe.Resource.getBytes("bin/template.swf")));
 
 		//build binary data tags
 		var inp = File.read(pre_src,true);
@@ -295,12 +295,12 @@ class Main {
 		out.flush();
 		out.close();
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
 
 	static function strings(libsrc:String) {
 		var swf = grab(libsrc,false).swf;
-		
+
 		function doABC(abcdata:Bytes) {
 			var reader = new flib.abc.Reader(new BytesInput(abcdata));
 			var abc:ABC = reader.readABC();
@@ -320,7 +320,7 @@ class Main {
 
 	static function externs(libsrc:String,includes:Array<String>,excludes:Array<String>) {
 		var swf = grab(libsrc,false).swf;
-	
+
 		function doABC_externs(abcdata:Bytes) {
 			var reader = new flib.abc.Reader(new BytesInput(abcdata));
 			var abc = reader.readABC();
@@ -337,7 +337,7 @@ class Main {
 				return ret;
 			}
 
-			var proc = [];	
+			var proc = [];
 			for(i in 0...abc.instances.length) {
 				var it = abc.instances[i];
 				try {
@@ -395,13 +395,13 @@ var out = "package "+pckg+";\n";
 						var meth = abc.methods[methid];
 						for(i in 0...meth.param_types.length) {
 							if(i!=0) ret += ",";
-	
+
 							var name =
 								if(meth.param_names.length==0) "p"+i
 								else string(meth.param_names[i]);
-	
+
 							ret += name+":"+multiname(meth.param_types[i]);
-	
+
 							var opt = i - (meth.param_types.length-meth.optionals.length);
 							if(opt>=0) {
 								var opt = meth.optionals[opt];
@@ -420,14 +420,14 @@ var out = "package "+pckg+";\n";
 										trace("oh no "+Std.string(opt.kind));
 									}
 								default:
-									trace("oh no "+Std.string(opt.kind));	
+									trace("oh no "+Std.string(opt.kind));
 								}
 								if(optval!="")
 									ret += "="+optval;
 							}
 						}
 						ret += "):"+multiname(meth.return_type)+";\n";
-	
+
 						//success!!
 						out += ret;
 					}catch(e:Dynamic) {
@@ -452,7 +452,7 @@ var out = "package "+pckg+";\n";
 								var prop = props.get(name);
 								if(prop==null)
 									props.set(name, prop = {getter:-1,setter:-1,name:name,stat:statics});
-	
+
 								if(Type.enumEq(type,mtGetter))
 									 prop.getter = mid;
 								else prop.setter = mid;
@@ -491,7 +491,7 @@ var out = "package "+pckg+";\n";
 				}
 
 	out+= "}\n";
-	
+
 				#if windows
 					var dir = (~/\./g).replace("externs."+pckg,"\\");
 					var path = dir + "\\" + clsname+".hx";
@@ -559,7 +559,7 @@ var out = "package "+pckg+";\n";
 			case mRTQName(_,name): string(abc,name);
 			case mMultiname(_,name,_): string(abc,name);
 			case mGenericName(_,params): "flash.Vector<"+multiname(abc,params[0])+">";
-			default: 
+			default:
 				trace("fuck types!! "+Std.string(n2));
 				"";
 		}
@@ -578,9 +578,9 @@ var out = "package "+pckg+";\n";
 	private static function doreport(abcdata:Bytes, ret:Array<SIZE>, cls:Hash<Int>) {
 		var reader = new flib.abc.Reader(new BytesInput(abcdata));
 		var abc = reader.readABC();
-			
+
 		var string = callback(string,abc);
-		var multiname = callback(multiname,abc);	
+		var multiname = callback(multiname,abc);
 
 		var names = new Array<String>();
 		var cnames = new Array<String>();
@@ -641,11 +641,11 @@ var out = "package "+pckg+";\n";
 	}
 
 	//----------------------------------------------------------------------------------------------
-	
+
 	private static function doABC(abcdata:Bytes) {
 		var reader = new flib.abc.Reader(new BytesInput(abcdata));
 		var abc = reader.readABC();
-		
+
 		$(mixin string(n) abc.cpool.strings[n-1]);
 		$(mixin multiname(n) ({
 			var n2 = abc.cpool.names[n-1];
@@ -689,23 +689,23 @@ var out = "package "+pckg+";\n";
 			while(meth.optionals.length != count)
 				meth.optionals.shift();
 		}
-	
+
 		var methodid = new Array<Int>();
 		var id = 0;
 		for(i in abc.methods) methodid.push(id++);
-		
+
 		$(mixin getsets(instances)
 			for(i in instances) {
 				var properties = new Hash<{x:Trait,y:Trait}>();
 				var flibrem = new Hash<Void>();
-				
+
 				for(t in i.traits) {
 					switch(t.data) {
 						case tdMethod(type,x,y):
 							if(Type.enumEq(type,mtMethod)) {
 								var flibd = flibdel(t.name);
 								var name = multiname(t.name);
-								
+
 								if(flibd=="flibdel")
 									flibrem.set(name,null);
 								if(flibd=="" && StringTools.startsWith(name,"flibopts_"))
@@ -714,30 +714,30 @@ var out = "package "+pckg+";\n";
 									flibrem.set(name,null);
 									flibrem.set(name.substr(8),null);
 								}
-								
-								if(name.length > 8 && name.startsWith("flibset_")) {
-									var varn = name.substr(8);
+
+								if(name.length > 4 && name.startsWith("set_")) {
+									var varn = name.substr(4);
 									if(properties.exists(varn))
 										properties.get(varn).y = t;
 									else
 										properties.set(varn,{x:null,y:t});
-										
+
 									t.data = tdMethod(mtSetter,x,y);
 								}
-								if(name.length > 8 && name.startsWith("flibget_")) {
-									var varn = name.substr(8);
+								if(name.length > 4 && name.startsWith("get_")) {
+									var varn = name.substr(4);
 									if(properties.exists(varn))
 										properties.get(varn).x = t;
 									else
-										properties.set(varn,{x:t,y:null});						
-										
+										properties.set(varn,{x:t,y:null});
+
 									t.data = tdMethod(mtGetter,x,y);
 								}
 							}
 						case tdSlot(const,sid,_,_,_):
 							var flibd = flibdel(t.name);
 							var name = multiname(t.name);
-							
+
 							if(flibd=="flibdel")
 								flibrem.set(name,null);
 							if(flibd=="" && name.substr(0,8)=="flibdel_" && name.length>8) {
@@ -747,7 +747,7 @@ var out = "package "+pckg+";\n";
 						default:
 					}
 				}
-				
+
 				var ntraits = [];
 				for(t in i.traits) {
 					switch(t.data) {
@@ -765,13 +765,13 @@ var out = "package "+pckg+";\n";
 							var name = multiname(t.name);
 							if(flibrem.exists(name))
 								continue;
-							if(!const) {	
+							if(!const) {
 								if(properties.exists(name)) {
 									var p = properties.get(name);
-									
+
 									if(p.x!=null) p.x.name = t.name;
 									if(p.y!=null) p.y.name = t.name;
-									
+
 									continue;
 								}
 							}
@@ -780,15 +780,15 @@ var out = "package "+pckg+";\n";
 							ntraits.push(t);
 					}
 				}
-				
+
 				i.traits = ntraits;
 			}
 		);
-		
+
 		getsets(abc.instances)
 		getsets(abc.classes)
 
-	
+
 		//maps old method index, to new method index
 		var methodset = new IntHash<Int>();
 		var ind = 0;
@@ -809,7 +809,7 @@ var out = "package "+pckg+";\n";
 			ind++;
 			continue;
 		}
-*/		
+*/
 		var i = 0;
 		while(true) {
 			if(i>=abc.mbodies.length) break;
@@ -818,11 +818,11 @@ var out = "package "+pckg+";\n";
 				i++;
 				continue;
 			}
-			
+
 			abc.mbodies.splice(i,1);
 			continue;
 		}
-/*		
+/*
 		for(i in abc.instances) {
 			i.iinit = methodset.get(i.iinit);
 			adtraits(i.traits);
@@ -839,7 +839,7 @@ var out = "package "+pckg+";\n";
 			i.method = methodset.get(i.method);
 			adtraits(i.traits);
 		}
-		
+
 		$(mixin adtraits(traits) {
 			for(i in traits) {
 				i.data = switch(i.data) {

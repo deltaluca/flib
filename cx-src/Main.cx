@@ -20,841 +20,855 @@ using StringTools;
 typedef SIZE = {size:Int,str:String};
 
 class Main {
-	static function parse(src:haxe.io.Input):Swf {
-		var reader = new flib.swf.Reader(src);
-		var swf = reader.readSwf();
-		return swf;
-	}
-	static function grab(src:String,keeplib=true):{swc:Bool,src:String,swf:Swf} {
-		var swc = StringTools.endsWith(src,".swc");
-		if(swc) {
+    static function parse(src:haxe.io.Input):Swf {
+        var reader = new flib.swf.Reader(src);
+        var swf = reader.readSwf();
+        return swf;
+    }
+    static function grab(src:String,keeplib=true):{swc:Bool,src:String,swf:Swf} {
+        var swc = StringTools.endsWith(src,".swc");
+        if(swc) {
 #if windows
-			if(Sys.command("7z",["-y","e",src,"library.swf"])!=0) {
-				Lib.println("ERROR please make sure 7z has been added to PATH variable");
-				Sys.exit(1);
-			}
+            if(Sys.command("7z",["-y","e",src,"library.swf"])!=0) {
+                Lib.println("ERROR please make sure 7z has been added to PATH variable");
+                Sys.exit(1);
+            }
 #elseif unix
-			Sys.command("unzip",[src,"library.swf"]);
+            Sys.command("unzip",[src,"library.swf"]);
 #else
-			Lib.println("Please specify compiler flag windows or unix on compilation of flib");
-			Sys.exit(1);
+            Lib.println("Please specify compiler flag windows or unix on compilation of flib");
+            Sys.exit(1);
 #end
-			src = "library.swf";
-		}
+            src = "library.swf";
+        }
 
-		var inp = File.read(src,true);
-		var swf = parse(inp);
-		inp.close();
+        var inp = File.read(src,true);
+        var swf = parse(inp);
+        inp.close();
 
-		if(swc && !keeplib) {
+        if(swc && !keeplib) {
 #if windows
-			Sys.command("del",["library.swf"]);
+            Sys.command("del",["library.swf"]);
 #else
-			Sys.command("rm",["library.swf"]);
+            Sys.command("rm",["library.swf"]);
 #end
-		}
+        }
 
-		return {swc:swc,src:src,swf:swf};
-	}
+        return {swc:swc,src:src,swf:swf};
+    }
 
-	static function main() {
-		var args = Sys.args();
-		if(args.length<1) {
-			Lib.println("For help use --help option");
-			Sys.exit(1);
-		}
+    static function main() {
+        var args = Sys.args();
+        if(args.length<1) {
+            Lib.println("For help use --help option");
+            Sys.exit(1);
+        }
 
-		if(args[0]=="--help") {
-			Lib.println("Usage: flib lib.swf/swc");
-			Lib.println("\tvar x(get_x,set_x), has 'x' removed, and get_x set_x turned to native getter/setters. get_x set_x must be inlined to avoid haxe code being destroyed");
-			Lib.println("\t@:ns(\"flibdel\") inline function x() {} get's removed from the swc entirely, make sure this method is also inlined and is not used dynamicaly through down-casting/reflection or else it will break haxe code");
-			Lib.println("\tfunction flibopts_#(){} with # replaced by integer, ensures that constructors for the class have the correct number of optional arguments set in the swf/swc as haxe makes them all optional");
-			Lib.println("\n");
-			Lib.println("Alternatively: flib --report lib.swf/swc to report method sizes throughout");
-			Lib.println("\n");
-			Lib.println("ALTERNATIVELY: flib --combine preloader.swf main.swf out.swf to combine the two swf's together into a single swf loading the preloader in first frame, and on dispatch of a flash event \"nextFrame\" will continue to frame 2 and load the main swf. Properties of the final swf is taken from main.swf (dimensions,bgcolor,fps)");
-			Lib.println("\n");
-			Lib.println("AND NOW!!: flib --externs lib.swf --include [package]+ [--exclude [package]+] to generate externs for haxe for the specific packages in the lib, whilst excluding any properties/methods which make reference to the excluded list of packages");
-			Lib.println("\n");
-			Lib.println("AND THEN!!: flib --strings lib.swc/swf to dump the cpool strings");
-			Sys.exit(0);
-		}
+        if(args[0]=="--help") {
+            Lib.println("Usage: flib lib.swf/swc");
+            Lib.println("\tvar x(get_x,set_x), has 'x' removed, and get_x set_x turned to native getter/setters. get_x set_x must be inlined to avoid haxe code being destroyed");
+            Lib.println("\t@:ns(\"flibdel\") inline function x() {} get's removed from the swc entirely, make sure this method is also inlined and is not used dynamicaly through down-casting/reflection or else it will break haxe code");
+            Lib.println("\tfunction flibopts_#(){} with # replaced by integer, ensures that constructors for the class have the correct number of optional arguments set in the swf/swc as haxe makes them all optional");
+            Lib.println("\n");
+            Lib.println("Alternatively: flib --report lib.swf/swc to report method sizes throughout");
+            Lib.println("\n");
+            Lib.println("ALTERNATIVELY: flib --combine preloader.swf main.swf out.swf to combine the two swf's together into a single swf loading the preloader in first frame, and on dispatch of a flash event \"nextFrame\" will continue to frame 2 and load the main swf. Properties of the final swf is taken from main.swf (dimensions,bgcolor,fps)");
+            Lib.println("\n");
+            Lib.println("AND NOW!!: flib --externs lib.swf --include [package]+ [--exclude [package]+] to generate externs for haxe for the specific packages in the lib, whilst excluding any properties/methods which make reference to the excluded list of packages");
+            Lib.println("\n");
+            Lib.println("AND THEN!!: flib --strings lib.swc/swf to dump the cpool strings");
+            Sys.exit(0);
+        }
 
-		switch(args[0]) {
-		case "--strings":
-			if(args.length<2) {
-				Lib.println("ERROR --strings needs argument");
-				Sys.exit(0);
-			}
-			strings(args[1]);
+        switch(args[0]) {
+        case "--strings":
+            if(args.length<2) {
+                Lib.println("ERROR --strings needs argument");
+                Sys.exit(0);
+            }
+            strings(args[1]);
 
-		case "--report":
-			if(args.length<2) {
-				Lib.println("ERROR --report needs argument");
-				Sys.exit(0);
-			}
-			report(args[1]);
+        case "--report":
+            if(args.length<2) {
+                Lib.println("ERROR --report needs argument");
+                Sys.exit(0);
+            }
+            report(args[1]);
 
-		case "--combine":
-			if(args.length<4) {
-				Lib.println("ERROR --combine needs 3 arguments");
-				Sys.exit(0);
-			}
-			var pre  = args[1];
-			var main = args[2];
-			var outf = args[3];
-			combine(pre,main,outf);
+        case "--combine":
+            if(args.length<4) {
+                Lib.println("ERROR --combine needs 3 arguments");
+                Sys.exit(0);
+            }
+            var pre  = args[1];
+            var main = args[2];
+            var outf = args[3];
+            combine(pre,main,outf);
 
-		case "--externs":
-			if(args.length<3) {
-				Lib.println("ERROR --externs should have atleast 4 args");
-				Sys.exit(0);
-			}
-			var lib = args[1];
+        case "--externs":
+            if(args.length<3) {
+                Lib.println("ERROR --externs should have atleast 4 args");
+                Sys.exit(0);
+            }
+            var lib = args[1];
 
-			var incls = [];
-			var excls = [];
-			var including = false;
-			for(i in 2...args.length) {
-				var arg = args[i];
-				if     (arg=="--include") including = true;
-				else if(arg=="--exclude") including = false;
-				else if(including) incls.push(arg);
-				else               excls.push(arg);
-			}
+            var incls = [];
+            var excls = [];
+            var including = false;
+            for(i in 2...args.length) {
+                var arg = args[i];
+                if     (arg=="--include") including = true;
+                else if(arg=="--exclude") including = false;
+                else if(including) incls.push(arg);
+                else               excls.push(arg);
+            }
 
-			externs(lib,incls,excls);
+            externs(lib,incls,excls);
 
-		default:
-			process(args[0]);
-		}
-	}
+        default:
+            process(args[0]);
+        }
+    }
 
-	static function report(src:String) {
-		var swf = grab(src,false).swf;
-		Lib.println("swf version = "+swf.version);
+    static function report(src:String) {
+        var swf = grab(src,false).swf;
+        Lib.println("swf version = "+swf.version);
 
-		//----------------------------------
-		//process ABC blocks for size report
+        //----------------------------------
+        //process ABC blocks for size report
 
-		var ret:Array<SIZE> = [];
-		var cls = new Hash<Int>();
-		for(tag in swf.tags) {
-			switch(tag) {
-			default:
-			case tDoABC(abcdata):
-				doreport(abcdata,ret,cls);
-			case tDefABC(_,_,abcdata):
-				doreport(abcdata,ret,cls);
-			}
-		}
+        var ret:Array<SIZE> = [];
+        var cls = new Hash<Int>();
+        for(tag in swf.tags) {
+            switch(tag) {
+            default:
+            case tDoABC(abcdata):
+                doreport(abcdata,ret,cls);
+            case tDefABC(_,_,abcdata):
+                doreport(abcdata,ret,cls);
+            }
+        }
 
-		var total = 0;
-		ret.sort(function (a,b) return b.size-a.size);
-		for(i in ret) {
-			Lib.println(i.str);
-			total += i.size;
-		}
+        var total = 0;
+        ret.sort(function (a,b) return b.size-a.size);
+        for(i in ret) {
+            Lib.println(i.str);
+            total += i.size;
+        }
 
-		Lib.println("\n");
-		Lib.println("--------");
-		var carr = new Array<SIZE>();
-		for(x in cls.keys())
-			carr.push({size:cls.get(x),str:x});
-		carr.sort(function (a,b) return b.size-a.size);
+        Lib.println("\n");
+        Lib.println("--------");
+        var carr = new Array<SIZE>();
+        for(x in cls.keys())
+            carr.push({size:cls.get(x),str:x});
+        carr.sort(function (a,b) return b.size-a.size);
 
-		for(i in carr) {
-			var str = ""+duh(i.size);
-			while(str.length<10) str += " ";
-			str += i.str;
-			Lib.println(str);
-		}
+        for(i in carr) {
+            var str = ""+duh(i.size);
+            while(str.length<10) str += " ";
+            str += i.str;
+            Lib.println(str);
+        }
 
-		Lib.println("\n");
-		Lib.println("--------");
-		Lib.println("total: "+duh(total));
-	}
+        Lib.println("\n");
+        Lib.println("--------");
+        Lib.println("total: "+duh(total));
+    }
 
-	static function process(src:String) {
-		var swcswf = grab(src);
-		var swf = swcswf.swf;
+    static function process(src:String) {
+        var swcswf = grab(src);
+        var swf = swcswf.swf;
 
-		//------------------------------------------------------------------------------------------
-		//process ABC blocks for replacements and deletions.
-		var ntags = [];
-		for(tag in swf.tags) {
-			ntags.push(switch(tag) {
-			default:
-				tag;
-			case tDoABC(abcdata):
-				tDoABC(doABC(abcdata));
-			case tDefABC(lazy,name,abcdata):
-				tDefABC(lazy,name,doABC(abcdata));
-			});
-		}
-		swf.tags = ntags;
+        //------------------------------------------------------------------------------------------
+        //process ABC blocks for replacements and deletions.
+        var ntags = [];
+        for(tag in swf.tags) {
+            ntags.push(switch(tag) {
+            default:
+                tag;
+            case tDoABC(abcdata):
+                tDoABC(doABC(abcdata));
+            case tDefABC(lazy,name,abcdata):
+                tDefABC(lazy,name,doABC(abcdata));
+            });
+        }
+        swf.tags = ntags;
 
-		//------------------------------------------------------------------------------------------
-		//create new swf
+        //------------------------------------------------------------------------------------------
+        //create new swf
 #if windows
-		Sys.command("del",[swcswf.src]);
+        Sys.command("del",[swcswf.src]);
 #else
-		Sys.command("rm",[swcswf.src]);
+        Sys.command("rm",[swcswf.src]);
 #end
-		var out = File.write(swcswf.src,true);
-		var writer = new flib.swf.Writer(out);
-		writer.writeSwf(swf);
-		out.flush();
-		out.close();
+        var out = File.write(swcswf.src,true);
+        var writer = new flib.swf.Writer(out);
+        writer.writeSwf(swf);
+        out.flush();
+        out.close();
 
-		//------------------------------------------------------------------------------------------
-		//inject new swf
+        //------------------------------------------------------------------------------------------
+        //inject new swf
 
-		if(swcswf.swc) {
+        if(swcswf.swc) {
 #if windows
-			Sys.command("7z",["-y","a","-tzip",src,"library.swf"]);
-			Sys.command("del",["library.swf"]);
+            Sys.command("7z",["-y","a","-tzip",src,"library.swf"]);
+            Sys.command("del",["library.swf"]);
 #else
-		    Sys.command("zip",[src,"-d","library.swf"]);
-			Sys.command("zip",[src,"library.swf"]);
-			Sys.command("rm",["library.swf"]);
+            Sys.command("zip",[src,"-d","library.swf"]);
+            Sys.command("zip",[src,"library.swf"]);
+            Sys.command("rm",["library.swf"]);
 #end
-		}
-	}
+        }
+    }
 
-	static function combine(pre_src:String,main_src:String,out_src:String) {
-		//want to grab file data for stage size etc.
-		var mainswf = grab(main_src,false).swf;
-		var fattr:Tag = null;
-		var setbg:Tag = null;
-		for(tag in mainswf.tags) {
-			switch(tag) {
-			default:
-			case tFileAttributes(_,_,_,_,_):
-				fattr = tag;
-			case tSetBackgroundColor(_):
-				setbg = tag;
-			}
-			if(fattr!=null && setbg!=null) break;
-		}
+    static function combine(pre_src:String,main_src:String,out_src:String) {
+        //want to grab file data for stage size etc.
+        var mainswf = grab(main_src,false).swf;
+        var fattr:Tag = null;
+        var setbg:Tag = null;
+        for(tag in mainswf.tags) {
+            switch(tag) {
+            default:
+            case tFileAttributes(_,_,_,_,_):
+                fattr = tag;
+            case tSetBackgroundColor(_):
+                setbg = tag;
+            }
+            if(fattr!=null && setbg!=null) break;
+        }
 
-		//grab template!
-		var template = parse(new haxe.io.BytesInput(haxe.Resource.getBytes("bin/template.swf")));
+        //grab template!
+        var template = parse(new haxe.io.BytesInput(haxe.Resource.getBytes("bin/template.swf")));
 
-		//build binary data tags
-		var inp = File.read(pre_src,true);
-		var predat = tDefineBinaryData(0xfff0,inp.readAll());
-		inp.close();
+        //build binary data tags
+        var inp = File.read(pre_src,true);
+        var predat = tDefineBinaryData(0xfff0,inp.readAll());
+        inp.close();
 
-		var inp = File.read(main_src,true);
-		var maindat = tDefineBinaryData(0xfff2,inp.readAll());
-		inp.close();
+        var inp = File.read(main_src,true);
+        var maindat = tDefineBinaryData(0xfff2,inp.readAll());
+        inp.close();
 
-		//remove template metadata
-		template.tags.splice(1,1);
+        //remove template metadata
+        template.tags.splice(1,1);
 
-		//replace old file-attr and bg-col tags
-		template.tags.shift();
-		template.tags.shift();
-		template.tags.unshift(setbg);
-		template.tags.unshift(fattr);
+        //replace old file-attr and bg-col tags
+        template.tags.shift();
+        template.tags.shift();
+        template.tags.unshift(setbg);
+        template.tags.unshift(fattr);
 
-		//and swap width-height etc
-		template.width     = mainswf.width;
-		template.height    = mainswf.height;
-		template.compress  = mainswf.compress;
-		template.version   = mainswf.version;
-		template.framerate = mainswf.framerate;
-		//framecount should remain 2!
+        //and swap width-height etc
+        template.width     = mainswf.width;
+        template.height    = mainswf.height;
+        template.compress  = mainswf.compress;
+        template.version   = mainswf.version;
+        template.framerate = mainswf.framerate;
+        //framecount should remain 2!
 
-		//insert binary data
-		template.tags.insert(5, predat);
-		template.tags.insert(7, maindat);
+        //insert binary data
+        template.tags.insert(5, predat);
+        template.tags.insert(7, maindat);
 
-		//append symbol data
-		var symbols = switch(template.tags[4]) {
-			default: null;
-			case tSymbolClass(xs): xs;
-		};
-		symbols.push({
-			tag:0xfff0,
-			name:"LoaderBytes"
-		});
+        //append symbol data
+        var symbols = switch(template.tags[4]) {
+            default: null;
+            case tSymbolClass(xs): xs;
+        };
+        symbols.push({
+            tag:0xfff0,
+            name:"LoaderBytes"
+        });
 
-		template.tags.insert(7, tSymbolClass([
-			{
-				tag:0xfff2,
-				name:"MainBytes"
-			}
-		]));
+        template.tags.insert(7, tSymbolClass([
+            {
+                tag:0xfff2,
+                name:"MainBytes"
+            }
+        ]));
 
-		//write out to file :)
-		var out = File.write(out_src,true);
-		var writer = new flib.swf.Writer(out);
-		writer.writeSwf(template);
-		out.flush();
-		out.close();
-	}
+        //write out to file :)
+        var out = File.write(out_src,true);
+        var writer = new flib.swf.Writer(out);
+        writer.writeSwf(template);
+        out.flush();
+        out.close();
+    }
 
-	//----------------------------------------------------------------------------------------------
+    //----------------------------------------------------------------------------------------------
 
-	static function strings(libsrc:String) {
-		var swf = grab(libsrc,false).swf;
+    static function strings(libsrc:String) {
+        var swf = grab(libsrc,false).swf;
 
-		function doABC(abcdata:Bytes) {
-			var reader = new flib.abc.Reader(new BytesInput(abcdata));
-			var abc:ABC = reader.readABC();
-			Lib.println(abc.cpool.strings.join("\n"));
-		}
+        function doABC(abcdata:Bytes) {
+            var reader = new flib.abc.Reader(new BytesInput(abcdata));
+            var abc:ABC = reader.readABC();
+            Lib.println(abc.cpool.strings.join("\n"));
+        }
 
-		for(tag in swf.tags) {
-			switch(tag) {
-			default:
-			case tDoABC(abcdata):			 doABC(abcdata);
-			case tDefABC(lazy,name,abcdata): doABC(abcdata);
-			}
-		}
-	}
+        for(tag in swf.tags) {
+            switch(tag) {
+            default:
+            case tDoABC(abcdata):             doABC(abcdata);
+            case tDefABC(lazy,name,abcdata): doABC(abcdata);
+            }
+        }
+    }
 
-	//----------------------------------------------------------------------------------------------
+    //----------------------------------------------------------------------------------------------
 
-	static function externs(libsrc:String,includes:Array<String>,excludes:Array<String>) {
-		var swf = grab(libsrc,false).swf;
+    static function externs(libsrc:String,includes:Array<String>,excludes:Array<String>) {
+        var swf = grab(libsrc,false).swf;
 
-		function doABC_externs(abcdata:Bytes) {
-			var reader = new flib.abc.Reader(new BytesInput(abcdata));
-			var abc = reader.readABC();
+        function doABC_externs(abcdata:Bytes) {
+            var reader = new flib.abc.Reader(new BytesInput(abcdata));
+            var abc = reader.readABC();
 
-			var string = callback(string,abc);
+            var string = callback(string,abc);
 
-			var mult = callback(multiname,abc);
-			function multiname(id:Int) {
-				var ret = mult(id);
-				for(pckg in excludes) {
-					if(StringTools.startsWith(ret,pckg+"."))
-						throw ret;
-				}
-				return ret;
-			}
+            var mult = callback(multiname,abc);
+            function multiname(id:Int) {
+                var ret = mult(id);
+                for(pckg in excludes) {
+                    if(StringTools.startsWith(ret,pckg+"."))
+                        throw ret;
+                }
+                return ret;
+            }
 
-			var proc = [];
-			for(i in 0...abc.instances.length) {
-				var it = abc.instances[i];
-				try {
-					var clsname = multiname(it.name);
-					for(pckg in includes) {
-						if(StringTools.startsWith(clsname,pckg+"."))
-							proc.push({it:it, cls:abc.classes[i], name:clsname});
-					}
-				}catch(e:Dynamic) {
-					Lib.println("CLASS '"+e+"' EXCLUDED");
-				}
-			}
+            var proc = [];
+            for(i in 0...abc.instances.length) {
+                var it = abc.instances[i];
+                try {
+                    var clsname = multiname(it.name);
+                    for(pckg in includes) {
+                        if(StringTools.startsWith(clsname,pckg+"."))
+                            proc.push({it:it, cls:abc.classes[i], name:clsname});
+                    }
+                }catch(e:Dynamic) {
+                    Lib.println("CLASS '"+e+"' EXCLUDED");
+                }
+            }
 
-			for(ixy in proc) {
-				var name = ixy.name;
-				var it = ixy.it;
-				var cls = ixy.cls;
+            for(ixy in proc) {
+                var name = ixy.name;
+                var it = ixy.it;
+                var cls = ixy.cls;
 
-				var pckg = name.substr(0,name.lastIndexOf("."));
-				var clsname = name.substr(pckg.length+1);
+                var pckg = name.substr(0,name.lastIndexOf("."));
+                var clsname = name.substr(pckg.length+1);
 
-				var isinterface = (it.flags&4) != 0;
+                var isinterface = (it.flags&4) != 0;
 
 var out = "package "+pckg+";\n";
-	out+= "extern "+(isinterface ? "interface " : "class ")+clsname+" ";
-				var fst = true;
-				for(id in it.interfaces) {
-					if(!fst) out += ", ";
-					fst = false;
-					out += "implements " + multiname(id);
-				}
-				if(it.superc!=0) {
-					var sup = multiname(it.superc);
-					if(sup!="Dynamic") { //lol
-						if(!fst) out += ", ";
-						fst = false;
-						out += "extends "+ sup;
-					}
-				}
-				if(!fst) out += " ";
-				out += "{\n";
+    out+= "extern "+(isinterface ? "interface " : "class ")+clsname+" ";
+                var fst = true;
+                for(id in it.interfaces) {
+                    if(!fst) out += ", ";
+                    fst = false;
+                    out += "implements " + multiname(id);
+                }
+                if(it.superc!=0) {
+                    var sup = multiname(it.superc);
+                    if(sup!="Dynamic") { //lol
+                        if(!fst) out += ", ";
+                        fst = false;
+                        out += "extends "+ sup;
+                    }
+                }
+                if(!fst) out += " ";
+                out += "{\n";
 
-				function print_method(methid:Int,name:String,?overriden=false,?statics=false) {
-					//quick hack for interfaces
-					if(name.indexOf(".")!=-1)
-						name = name.substr(name.lastIndexOf(".")+1);
+                function print_method(methid:Int,name:String,?overriden=false,?statics=false) {
+                    //quick hack for interfaces
+                    if(name.indexOf(".")!=-1)
+                        name = name.substr(name.lastIndexOf(".")+1);
 
-					//tentatively build method, allowing exception from multiname to cancel.
-					try {
-						var ret = "";
-	ret+= "    public ";
-						if(overriden) ret += "override ";
-						if(statics) ret += "static ";
-						ret += "function "+name+"(";
-						var meth = abc.methods[methid];
-						for(i in 0...meth.param_types.length) {
-							if(i!=0) ret += ",";
+                    //tentatively build method, allowing exception from multiname to cancel.
+                    try {
+                        var ret = "";
+    ret+= "    public ";
+                        if(overriden) ret += "override ";
+                        if(statics) ret += "static ";
+                        ret += "function "+name+"(";
+                        var meth = abc.methods[methid];
+                        for(i in 0...meth.param_types.length) {
+                            if(i!=0) ret += ",";
 
-							var name =
-								if(meth.param_names.length==0) "p"+i
-								else string(meth.param_names[i]);
+                            var name =
+                                if(meth.param_names.length==0) "p"+i
+                                else string(meth.param_names[i]);
 
-							ret += name+":"+multiname(meth.param_types[i]);
+                            ret += name+":"+multiname(meth.param_types[i]);
 
-							var opt = i - (meth.param_types.length-meth.optionals.length);
-							if(opt>=0) {
-								var opt = meth.optionals[opt];
-								var optval = "";
-								switch(opt.kind) {
-								case nsOther(x):
-									switch(x) {
-									case 0: optval = "null";
-									case 1: optval = string(opt.value);
-									case 3: optval = Std.string(abc.cpool.ints[opt.value-1]);
-									case 4: optval = Std.string(abc.cpool.uints[opt.value-1]);
-									case 6: optval = Std.string(abc.cpool.doubles[opt.value-1]);
-									case 10: optval = "false";
-									case 11: optval = "true";
-									default:
-										trace("oh no "+Std.string(opt.kind));
-									}
-								default:
-									trace("oh no "+Std.string(opt.kind));
-								}
-								if(optval!="")
-									ret += "="+optval;
-							}
-						}
-						ret += "):"+multiname(meth.return_type)+";\n";
+                            var opt = i - (meth.param_types.length-meth.optionals.length);
+                            if(opt>=0) {
+                                var opt = meth.optionals[opt];
+                                var optval = "";
+                                switch(opt.kind) {
+                                case nsOther(x):
+                                    switch(x) {
+                                    case 0: optval = "null";
+                                    case 1: optval = string(opt.value);
+                                    case 3: optval = Std.string(abc.cpool.ints[opt.value-1]);
+                                    case 4: optval = Std.string(abc.cpool.uints[opt.value-1]);
+                                    case 6: optval = Std.string(abc.cpool.doubles[opt.value-1]);
+                                    case 10: optval = "false";
+                                    case 11: optval = "true";
+                                    default:
+                                        trace("oh no "+Std.string(opt.kind));
+                                    }
+                                default:
+                                    trace("oh no "+Std.string(opt.kind));
+                                }
+                                if(optval!="")
+                                    ret += "="+optval;
+                            }
+                        }
+                        ret += "):"+multiname(meth.return_type)+";\n";
 
-						//success!!
-						out += ret;
-					}catch(e:Dynamic) {
-						Lib.println("METHOD '"+pckg+"."+clsname+"::"+name+"' EXCLUDED: reason="+e);
-					}
-				}
+                        //success!!
+                        out += ret;
+                    }catch(e:Dynamic) {
+                        Lib.println("METHOD '"+pckg+"."+clsname+"::"+name+"' EXCLUDED: reason="+e);
+                    }
+                }
 
-				if(!isinterface)
-					print_method(it.iinit,"new");
+                if(!isinterface)
+                    print_method(it.iinit,"new");
 
-				//deferred to gather getters and setters
-				var props = new Hash<{getter:Int,setter:Int,name:String,stat:Bool}>();
+                //deferred to gather getters and setters
+                var props = new Hash<{getter:Int,setter:Int,name:String,stat:Bool}>();
 
-				$(mixin do_traits(traits,statics) {
-					for(t in traits) {
-						switch(t.data) {
-						case tdMethod(type,_,mid):
-							var name = multiname(t.name);
-							if(Type.enumEq(type,mtMethod))
-								print_method(mid,name,t.overriden,statics);
-							else {
-								var prop = props.get(name);
-								if(prop==null)
-									props.set(name, prop = {getter:-1,setter:-1,name:name,stat:statics});
+                $(mixin do_traits(traits,statics) {
+                    for(t in traits) {
+                        switch(t.data) {
+                        case tdMethod(type,_,mid):
+                            var name = multiname(t.name);
+                            if(Type.enumEq(type,mtMethod))
+                                print_method(mid,name,t.overriden,statics);
+                            else {
+                                var prop = props.get(name);
+                                if(prop==null)
+                                    props.set(name, prop = {getter:-1,setter:-1,name:name,stat:statics});
 
-								if(Type.enumEq(type,mtGetter))
-									 prop.getter = mid;
-								else prop.setter = mid;
-							}
-						case tdSlot(_,_,type,_,_):
-							var name = multiname(t.name);
-							try {
-								var type = multiname(type);
-	out += "    public ";
-								if(statics) out += "static ";
-								out += "var "+name+":"+type+";\n";
-							}catch(e:Dynamic) {
-								Lib.println("VAR '"+pckg+"."+clsname+"::"+name+"' EXCLUDED: reason="+e);
-							}
-						default:
-						}
-					}
-				});
+                                if(Type.enumEq(type,mtGetter))
+                                     prop.getter = mid;
+                                else prop.setter = mid;
+                            }
+                        case tdSlot(_,_,type,_,_):
+                            var name = multiname(t.name);
+                            try {
+                                var type = multiname(type);
+    out += "    public ";
+                                if(statics) out += "static ";
+                                out += "var "+name+":"+type+";\n";
+                            }catch(e:Dynamic) {
+                                Lib.println("VAR '"+pckg+"."+clsname+"::"+name+"' EXCLUDED: reason="+e);
+                            }
+                        default:
+                        }
+                    }
+                });
 
-				do_traits(it.traits,false);
-				do_traits(cls.traits,true);
+                do_traits(it.traits,false);
+                do_traits(cls.traits,true);
 
-				for(prop in props) {
-	out += "    public ";
-					if(prop.stat) out += "static ";
-					out += "var "+prop.name+"(";
-					if(prop.getter!=-1) out += "default" else out += "never";
-					out += ",";
-					if(prop.setter!=-1) out += "default" else out += "never";
-					out += "):";
+                for(prop in props) {
+    out += "    public ";
+                    if(prop.stat) out += "static ";
+                    out += "var "+prop.name+"(";
+                    if(prop.getter!=-1) out += "default" else out += "never";
+                    out += ",";
+                    if(prop.setter!=-1) out += "default" else out += "never";
+                    out += "):";
 
-					var mt = if(prop.getter==-1) prop.setter else prop.getter;
-					out += multiname(abc.methods[mt].return_type);
+                    var mt = if(prop.getter==-1) prop.setter else prop.getter;
+                    out += multiname(abc.methods[mt].return_type);
 
-					out += ";\n";
-				}
+                    out += ";\n";
+                }
 
-	out+= "}\n";
+    out+= "}\n";
 
-				#if windows
-					var dir = (~/\./g).replace("externs."+pckg,"\\");
-					var path = dir + "\\" + clsname+".hx";
-				#else
-					var dir = (~/\./g).replace("externs."+pckg,"/");
-					var path = dir + "/" + clsname + ".hx";
-				#end
+                #if windows
+                    var dir = (~/\./g).replace("externs."+pckg,"\\");
+                    var path = dir + "\\" + clsname+".hx";
+                #else
+                    var dir = (~/\./g).replace("externs."+pckg,"/");
+                    var path = dir + "/" + clsname + ".hx";
+                #end
 
-				cdir(dir);
-				var fout = neko.io.File.write(path,false);
-				Lib.println("Writing '"+path+"'");
-				fout.writeString(out);
-				fout.flush();
-				fout.close();
-			}
-		}
+                cdir(dir);
+                var fout = neko.io.File.write(path,false);
+                Lib.println("Writing '"+path+"'");
+                fout.writeString(out);
+                fout.flush();
+                fout.close();
+            }
+        }
 
-		for(tag in swf.tags) {
-			switch(tag) {
-			default:
-			case tDoABC(abcdata):			 doABC_externs(abcdata);
-			case tDefABC(lazy,name,abcdata): doABC_externs(abcdata);
-			}
-		}
-	}
+        for(tag in swf.tags) {
+            switch(tag) {
+            default:
+            case tDoABC(abcdata):             doABC_externs(abcdata);
+            case tDefABC(lazy,name,abcdata): doABC_externs(abcdata);
+            }
+        }
+    }
 
-	static function cdir(dir:String) {
-		if(neko.FileSystem.exists(dir)) return;
-		if(dir=="") throw "wtf??";
-		try {
-			neko.FileSystem.createDirectory(dir);
-			Lib.println("Creating directory '"+dir+"'");
-		}catch(e:Dynamic) {
-			if(dir.indexOf(#if windows "\\" #else "/" #end)!=-1) {
-				var parent = dir.substr(0,dir.lastIndexOf(#if windows "\\" #else "/" #end));
-				cdir(parent);
-				cdir(dir);
-			}
-		}
-	}
+    static function cdir(dir:String) {
+        if(neko.FileSystem.exists(dir)) return;
+        if(dir=="") throw "wtf??";
+        try {
+            neko.FileSystem.createDirectory(dir);
+            Lib.println("Creating directory '"+dir+"'");
+        }catch(e:Dynamic) {
+            if(dir.indexOf(#if windows "\\" #else "/" #end)!=-1) {
+                var parent = dir.substr(0,dir.lastIndexOf(#if windows "\\" #else "/" #end));
+                cdir(parent);
+                cdir(dir);
+            }
+        }
+    }
 
-	//----------------------------------------------------------------------------------------------
+    //----------------------------------------------------------------------------------------------
 
-	private static inline function duh(bytes:Int) {
-		$(mixin fix100(x) (Std.int((x)*100)/100));
+    private static inline function duh(bytes:Int) {
+        $(mixin fix100(x) (Std.int((x)*100)/100));
 
-		if     (bytes<1024) return bytes+"B";
-		else if(bytes<1024*1024) return fix100(bytes/1024)+"KiB";
-		else return fix100(bytes/1024/1024)+"MiB";
-	}
+        if     (bytes<1024) return bytes+"B";
+        else if(bytes<1024*1024) return fix100(bytes/1024)+"KiB";
+        else return fix100(bytes/1024/1024)+"MiB";
+    }
 
-	private static function string(abc:ABC, n:Int) {
-		return abc.cpool.strings[n-1];
-	}
-	private static function multiname(abc:ABC, n:Int) {
-		if(n==0) return "Dynamic";
-		var n2 = abc.cpool.names[n-1];
-		var ret = switch(n2) {
-			case mQName(_,ns,name):
-				var pck = abc.cpool.nspaces[ns-1];
-				var pckstr = string(abc,pck.name);
-				var nstr = string(abc,name);
-				if(pckstr.length!=0) pckstr+"."+nstr;
-				else nstr;
-			case mRTQName(_,name): string(abc,name);
-			case mMultiname(_,name,_): string(abc,name);
-			case mGenericName(_,params): "flash.Vector<"+multiname(abc,params[0])+">";
-			default:
-				trace("fuck types!! "+Std.string(n2));
-				"";
-		}
-		return switch(ret) {
-			case "int": "Int";
-			case "Number": "Float";
-			case "void": "Void";
-			case "Boolean": "Bool";
-			case "Function": "Dynamic"; // yay
-			case "Array": "Array<Dynamic>"; // yay
-			case "Object": "Dynamic"; //yay
-			default: ret;
-		}
-	}
+    private static function string(abc:ABC, n:Int) {
+        return abc.cpool.strings[n-1];
+    }
+    private static function multiname(abc:ABC, n:Int) {
+        if(n==0) return "Dynamic";
+        var n2 = abc.cpool.names[n-1];
+        var ret = switch(n2) {
+            case mQName(_,ns,name):
+                var pck = abc.cpool.nspaces[ns-1];
+                var pckstr = string(abc,pck.name);
+                var nstr = string(abc,name);
+                if(pckstr != null && pckstr.length!=0) pckstr+"."+nstr;
+                else nstr;
+            case mRTQName(_,name): string(abc,name);
+            case mMultiname(_,name,_): string(abc,name);
+            case mGenericName(_,params): "flash.Vector<"+multiname(abc,params[0])+">";
+            default:
+                trace("fuck types!! "+Std.string(n2));
+                "";
+        }
+        return switch(ret) {
+            case "int": "Int";
+            case "Number": "Float";
+            case "void": "Void";
+            case "Boolean": "Bool";
+            case "Function": "Dynamic"; // yay
+            case "Array": "Array<Dynamic>"; // yay
+            case "Object": "Dynamic"; //yay
+            default: ret;
+        }
+    }
 
-	private static function doreport(abcdata:Bytes, ret:Array<SIZE>, cls:Hash<Int>) {
-		var reader = new flib.abc.Reader(new BytesInput(abcdata));
-		var abc = reader.readABC();
+    private static function doreport(abcdata:Bytes, ret:Array<SIZE>, cls:Hash<Int>) {
+        var reader = new flib.abc.Reader(new BytesInput(abcdata));
+        var abc = reader.readABC();
 
-		var string = callback(string,abc);
-		var multiname = callback(multiname,abc);
+        var string = callback(string,abc);
+        var multiname = callback(multiname,abc);
 
-		var names = new Array<String>();
-		var cnames = new Array<String>();
-		for(i in abc.instances) {
-			var clsname = multiname(i.name);
-			for(t in i.traits) {
-				switch(t.data) {
-				case tdMethod(type,_,mid):
-					var name = multiname(t.name);
-					if(Type.enumEq(type,mtMethod))
-						names[mid] = clsname+"::"+name;
-				 	else if(Type.enumEq(type,mtGetter))
-						names[mid] = clsname+"::set "+name;
-					else
-						names[mid] = clsname+"::get "+name;
-					cnames[mid] = clsname;
-				default:
-				}
-			}
-			names[i.iinit] = clsname+"::new";
-			cnames[i.iinit] = clsname;
-		}
+        var ind = 0;
+        for (i in 0...abc.cpool.names.length) {
+            Lib.println(""+ind+" = "+multiname(i));
+            ind++;
+        }
 
-		var ind = 0;
-		for(i in abc.classes) {
-			var clsname = multiname(abc.instances[ind].name);
-			ind++;
-			for(t in i.traits) {
-				switch(t.data) {
-				case tdMethod(type,_,mid):
-					var name = multiname(t.name);
-					if(Type.enumEq(type,mtMethod))
-						names[mid] = clsname+"."+name;
-				 	else if(Type.enumEq(type,mtGetter))
-						names[mid] = clsname+".set "+name;
-					else
-						names[mid] = clsname+".get "+name;
-					cnames[mid] = clsname;
-				default:
-				}
-			}
-			names[i.cinit] = clsname+".__init__";
-			cnames[i.cinit] = clsname;
-		}
+        var names = new Array<String>();
+        var cnames = new Array<String>();
+        for(i in abc.instances) {
+            var clsname = multiname(i.name);
+            for(t in i.traits) {
+                switch(t.data) {
+                case tdMethod(type,_,mid):
+                    var name = multiname(t.name);
+                    if(Type.enumEq(type,mtMethod)) {
+                        names[mid] = clsname+"::"+name;
+                        Lib.println(clsname+"::"+name+" = "+mid);
+}                     else if(Type.enumEq(type,mtGetter))
+                        names[mid] = clsname+"::set "+name;
+                    else
+                        names[mid] = clsname+"::get "+name;
+                    cnames[mid] = clsname;
+                default:
+                }
+            }
+            names[i.iinit] = clsname+"::new";
+            cnames[i.iinit] = clsname;
+        }
 
-		for(m in abc.mbodies) {
-			if(names[m.method]!=null) {
-				var str = ""+duh(m.avm.length);
-				while(str.length<10) str += " ";
-				str += names[m.method];
-				ret.push({size:m.avm.length,str:str});
+        var ind = 0;
+        for (i in abc.methods) {
+            Lib.println(""+ind+" "+i.need_arg_obj+" "+i.need_act+" "+i.need_rest+" "+i.set_dxns);
+            ind++;
+        }
 
-				var cname = cnames[m.method];
-				var cn = if(cls.exists(cname)) cls.get(cname) else 0;
-				cls.set(cname,cn+m.avm.length);
-			}
-		}
-	}
+        var ind = 0;
+        for(i in abc.classes) {
+            var clsname = multiname(abc.instances[ind].name);
+            ind++;
+            for(t in i.traits) {
+                switch(t.data) {
+                case tdMethod(type,_,mid):
+                    var name = multiname(t.name);
+                    if(Type.enumEq(type,mtMethod)) {
+                        names[mid] = clsname+"."+name;
+                        Lib.println(clsname+"."+name+" = "+mid);
+}                     else if(Type.enumEq(type,mtGetter))
+                        names[mid] = clsname+".set "+name;
+                    else
+                        names[mid] = clsname+".get "+name;
+                    cnames[mid] = clsname;
+                default:
+                }
+            }
+            names[i.cinit] = clsname+".__init__";
+            cnames[i.cinit] = clsname;
+        }
 
-	//----------------------------------------------------------------------------------------------
+        for(m in abc.mbodies) {
+            if(names[m.method]!=null) {
+                var str = ""+duh(m.avm.length);
+                while(str.length<10) str += " ";
+                str += names[m.method];
+                ret.push({size:m.avm.length,str:str});
 
-	private static function doABC(abcdata:Bytes) {
-		var reader = new flib.abc.Reader(new BytesInput(abcdata));
-		var abc = reader.readABC();
+                var cname = cnames[m.method];
+                var cn = if(cls.exists(cname)) cls.get(cname) else 0;
+                cls.set(cname,cn+m.avm.length);
+            }
+        }
+    }
 
-		$(mixin string(n) abc.cpool.strings[n-1]);
-		$(mixin multiname(n) ({
-			var n2 = abc.cpool.names[n-1];
-			switch(n2) {
-			case mQName(_,_,name): string(name);
-			case mRTQName(_,name): string(name);
-			case mMultiname(_,name,_): string(name);
-			default: "";
-			}
-		}));
-		$(mixin flibdel(n) ({
-			var n2 = abc.cpool.names[n-1];
-			switch(n2) {
-			case mQName(_,ns,name):
-				var n3 = abc.cpool.nspaces[ns-1];
-				string(n3.name);
-			default: "";
-			}
-		}));
+    //----------------------------------------------------------------------------------------------
 
-		//class constructor optionals
-		for(i in abc.instances) {
-			var meth = abc.methods[i.iinit];
-			var count = -1;
+    private static function doABC(abcdata:Bytes) {
+        var reader = new flib.abc.Reader(new BytesInput(abcdata));
+        var abc = reader.readABC();
 
-			for(t in i.traits) {
-				switch(t.data) {
-				case tdMethod(type,x,y):
-					if(Type.enumEq(type,mtMethod)) {
-						var flibd = flibdel(t.name);
-						var name = multiname(t.name);
-						if(name.substr(0,9)=="flibopts_")
-							count = Std.parseInt(name.substr(9));
-					}
-				default:
-				}
-			}
+        $(mixin string(n) abc.cpool.strings[n-1]);
+        $(mixin multiname(n) ({
+            var n2 = abc.cpool.names[n-1];
+            switch(n2) {
+            case mQName(_,_,name): string(name);
+            case mRTQName(_,name): string(name);
+            case mMultiname(_,name,_): string(name);
+            default: "";
+            }
+        }));
+        $(mixin flibdel(n) ({
+            var n2 = abc.cpool.names[n-1];
+            switch(n2) {
+            case mQName(_,ns,name):
+                var n3 = abc.cpool.nspaces[ns-1];
+                string(n3.name);
+            default: "";
+            }
+        }));
 
-			if(count==-1) continue;
+        //class constructor optionals
+        for(i in abc.instances) {
+            var meth = abc.methods[i.iinit];
+            var count = -1;
 
-			while(meth.optionals.length != count)
-				meth.optionals.shift();
-		}
+            for(t in i.traits) {
+                switch(t.data) {
+                case tdMethod(type,x,y):
+                    if(Type.enumEq(type,mtMethod)) {
+                        var flibd = flibdel(t.name);
+                        var name = multiname(t.name);
+                        if(name.substr(0,9)=="flibopts_")
+                            count = Std.parseInt(name.substr(9));
+                    }
+                default:
+                }
+            }
 
-		var methodid = new Array<Int>();
-		var id = 0;
-		for(i in abc.methods) methodid.push(id++);
+            if(count==-1) continue;
 
-		$(mixin getsets(instances)
-			for(i in instances) {
-				var properties = new Hash<{x:Trait,y:Trait}>();
-				var flibrem = new Hash<Void>();
+            while(meth.optionals.length != count)
+                meth.optionals.shift();
+        }
 
-				for(t in i.traits) {
-					switch(t.data) {
-						case tdMethod(type,x,y):
-							if(Type.enumEq(type,mtMethod)) {
-								var flibd = flibdel(t.name);
-								var name = multiname(t.name);
+        var methodid = new Array<Int>();
+        var id = 0;
+        for(i in abc.methods) methodid.push(id++);
 
-								if(flibd=="flibdel")
-									flibrem.set(name,null);
-								if(flibd=="" && StringTools.startsWith(name,"flibopts_"))
-									flibrem.set(name,null);
-								if(flibd=="" && name.substr(0,8)=="flibdel_" && name.length>8) {
-									flibrem.set(name,null);
-									flibrem.set(name.substr(8),null);
-								}
+        $(mixin getsets(instances)
+            for(i in instances) {
+                var properties = new Hash<{x:Trait,y:Trait}>();
+                var flibrem = new Hash<Void>();
 
-								if(name.length > 4 && name.startsWith("set_")) {
-									var varn = name.substr(4);
-									if(properties.exists(varn))
-										properties.get(varn).y = t;
-									else
-										properties.set(varn,{x:null,y:t});
+                for(t in i.traits) {
+                    switch(t.data) {
+                        case tdMethod(type,x,y):
+                            if(Type.enumEq(type,mtMethod)) {
+                                var flibd = flibdel(t.name);
+                                var name = multiname(t.name);
 
-									t.data = tdMethod(mtSetter,x,y);
-								}
-								if(name.length > 4 && name.startsWith("get_")) {
-									var varn = name.substr(4);
-									if(properties.exists(varn))
-										properties.get(varn).x = t;
-									else
-										properties.set(varn,{x:t,y:null});
+                                if(flibd=="flibdel")
+                                    flibrem.set(name,null);
+                                if(flibd=="" && StringTools.startsWith(name,"flibopts_"))
+                                    flibrem.set(name,null);
+                                if(flibd=="" && name.substr(0,8)=="flibdel_" && name.length>8) {
+                                    flibrem.set(name,null);
+                                    flibrem.set(name.substr(8),null);
+                                }
 
-									t.data = tdMethod(mtGetter,x,y);
-								}
-							}
-						case tdSlot(const,sid,_,_,_):
-							var flibd = flibdel(t.name);
-							var name = multiname(t.name);
+                                if(name.length > 4 && name.startsWith("set_")) {
+                                    var varn = name.substr(4);
+                                    if(properties.exists(varn))
+                                        properties.get(varn).y = t;
+                                    else
+                                        properties.set(varn,{x:null,y:t});
 
-							if(flibd=="flibdel")
-								flibrem.set(name,null);
-							if(flibd=="" && name.substr(0,8)=="flibdel_" && name.length>8) {
-								flibrem.set(name,null);
-								flibrem.set(name.substr(8),null);
-							}
-						default:
-					}
-				}
+                                    t.data = tdMethod(mtSetter,x,y);
+                                }
+                                if(name.length > 4 && name.startsWith("get_")) {
+                                    var varn = name.substr(4);
+                                    if(properties.exists(varn))
+                                        properties.get(varn).x = t;
+                                    else
+                                        properties.set(varn,{x:t,y:null});
 
-				var ntraits = [];
-				for(t in i.traits) {
-					switch(t.data) {
-						case tdMethod(type,_,id):
-							if(Type.enumEq(type,mtMethod)) {
-								var name = multiname(t.name);
-								if(!flibrem.exists(name))
-									ntraits.push(t);
-								else {
-									methodid.remove(id);
-								}
-							}else
-								ntraits.push(t);
-						case tdSlot(const,_,_,_,_):
-							var name = multiname(t.name);
-							if(flibrem.exists(name))
-								continue;
-							if(!const) {
-								if(properties.exists(name)) {
-									var p = properties.get(name);
+                                    t.data = tdMethod(mtGetter,x,y);
+                                }
+                            }
+                        case tdSlot(const,sid,_,_,_):
+                            var flibd = flibdel(t.name);
+                            var name = multiname(t.name);
 
-									if(p.x!=null) p.x.name = t.name;
-									if(p.y!=null) p.y.name = t.name;
+                            if(flibd=="flibdel")
+                                flibrem.set(name,null);
+                            if(flibd=="" && name.substr(0,8)=="flibdel_" && name.length>8) {
+                                flibrem.set(name,null);
+                                flibrem.set(name.substr(8),null);
+                            }
+                        default:
+                    }
+                }
 
-									continue;
-								}
-							}
-							ntraits.push(t);
-						default:
-							ntraits.push(t);
-					}
-				}
+                var ntraits = [];
+                for(t in i.traits) {
+                    switch(t.data) {
+                        case tdMethod(type,_,id):
+                            if(Type.enumEq(type,mtMethod)) {
+                                var name = multiname(t.name);
+                                if(!flibrem.exists(name))
+                                    ntraits.push(t);
+                                else {
+                                    methodid.remove(id);
+                                }
+                            }else
+                                ntraits.push(t);
+                        case tdSlot(const,_,_,_,_):
+                            var name = multiname(t.name);
+                            if(flibrem.exists(name))
+                                continue;
+                            if(!const) {
+                                if(properties.exists(name)) {
+                                    var p = properties.get(name);
 
-				i.traits = ntraits;
-			}
-		);
+                                    if(p.x!=null) p.x.name = t.name;
+                                    if(p.y!=null) p.y.name = t.name;
 
-		getsets(abc.instances)
-		getsets(abc.classes)
+                                    continue;
+                                }
+                            }
+                            ntraits.push(t);
+                        default:
+                            ntraits.push(t);
+                    }
+                }
+
+                i.traits = ntraits;
+            }
+        );
+
+        getsets(abc.instances)
+        getsets(abc.classes)
 
 
-		//maps old method index, to new method index
-		var methodset = new IntHash<Int>();
-		var ind = 0;
-		for(i in methodid) methodset.set(i,ind++);
-		/*
-		ind = 0;
-		var i = 0;
-		while(true) {
-			if(i>=abc.methods.length) break;
-			var method = abc.methods[i];
-			if(methodset.exists(ind)) {
-				i++;
-				ind++;
-				continue;
-			}
+        //maps old method index, to new method index
+        var methodset = new IntHash<Int>();
+        var ind = 0;
+        for(i in methodid) methodset.set(i,ind++);
+        /*
+        ind = 0;
+        var i = 0;
+        while(true) {
+            if(i>=abc.methods.length) break;
+            var method = abc.methods[i];
+            if(methodset.exists(ind)) {
+                i++;
+                ind++;
+                continue;
+            }
 
-			abc.methods.splice(i,1);
-			ind++;
-			continue;
-		}
+            abc.methods.splice(i,1);
+            ind++;
+            continue;
+        }
 */
-		var i = 0;
-		while(true) {
-			if(i>=abc.mbodies.length) break;
-			var mbody = abc.mbodies[i];
-			if(methodset.exists(mbody.method)) {
-				i++;
-				continue;
-			}
+        var i = 0;
+        while(true) {
+            if(i>=abc.mbodies.length) break;
+            var mbody = abc.mbodies[i];
+            if(methodset.exists(mbody.method)) {
+                i++;
+                continue;
+            }
 
-			abc.mbodies.splice(i,1);
-			continue;
-		}
+            abc.mbodies.splice(i,1);
+            continue;
+        }
 /*
-		for(i in abc.instances) {
-			i.iinit = methodset.get(i.iinit);
-			adtraits(i.traits);
-		}
-		for(i in abc.classes) {
-			i.cinit = methodset.get(i.cinit);
-			adtraits(i.traits);
-		}
-		for(i in abc.scripts) {
-			i.init = methodset.get(i.init);
-			adtraits(i.traits);
-		}
-		for(i in abc.mbodies) {
-			i.method = methodset.get(i.method);
-			adtraits(i.traits);
-		}
+        for(i in abc.instances) {
+            i.iinit = methodset.get(i.iinit);
+            adtraits(i.traits);
+        }
+        for(i in abc.classes) {
+            i.cinit = methodset.get(i.cinit);
+            adtraits(i.traits);
+        }
+        for(i in abc.scripts) {
+            i.init = methodset.get(i.init);
+            adtraits(i.traits);
+        }
+        for(i in abc.mbodies) {
+            i.method = methodset.get(i.method);
+            adtraits(i.traits);
+        }
 
-		$(mixin adtraits(traits) {
-			for(i in traits) {
-				i.data = switch(i.data) {
-					case tdFunction(sid,mid):
-						tdFunction(sid,methodset.get(mid));
-					case tdMethod(type,sid,mid):
-						tdMethod(type,sid,methodset.get(mid));
-					default: i.data;
-				}
-			}
-		});
-		*/
-		var out = new BytesOutput();
-		var writer = new flib.abc.Writer(out);
-		writer.writeABC(abc);
-		return out.getBytes();
-	}
+        $(mixin adtraits(traits) {
+            for(i in traits) {
+                i.data = switch(i.data) {
+                    case tdFunction(sid,mid):
+                        tdFunction(sid,methodset.get(mid));
+                    case tdMethod(type,sid,mid):
+                        tdMethod(type,sid,methodset.get(mid));
+                    default: i.data;
+                }
+            }
+        });
+        */
+        var out = new BytesOutput();
+        var writer = new flib.abc.Writer(out);
+        writer.writeABC(abc);
+        return out.getBytes();
+    }
 }

@@ -582,12 +582,6 @@ var out = "package "+pckg+";\n";
         var string = callback(string,abc);
         var multiname = callback(multiname,abc);
 
-        var ind = 0;
-        for (i in 0...abc.cpool.names.length) {
-            Lib.println(""+ind+" = "+multiname(i));
-            ind++;
-        }
-
         var names = new Array<String>();
         var cnames = new Array<String>();
         for(i in abc.instances) {

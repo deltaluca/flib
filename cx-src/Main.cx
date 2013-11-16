@@ -1,14 +1,12 @@
 package;
 
-import haxe.Int32;
 import haxe.io.BytesOutput;
 import haxe.io.BytesInput;
 import haxe.io.Bytes;
 
-import neko.Sys;
 import neko.Lib;
-import neko.io.File;
-import neko.io.Path;
+import sys.io.File;
+import haxe.io.Path;
 
 import flib.abc.Types;
 import flib.swf.Types;
@@ -138,7 +136,7 @@ class Main {
         //process ABC blocks for size report
 
         var ret:Array<SIZE> = [];
-        var cls = new Hash<Int>();
+        var cls = new Map<String, Int>();
         for(tag in swf.tags) {
             switch(tag) {
             default:
@@ -325,9 +323,9 @@ class Main {
             var reader = new flib.abc.Reader(new BytesInput(abcdata));
             var abc = reader.readABC();
 
-            var string = callback(string,abc);
+            var string = string.bind(abc);
 
-            var mult = callback(multiname,abc);
+            var mult = multiname.bind(abc);
             function multiname(id:Int) {
                 var ret = mult(id);
                 for(pckg in excludes) {
@@ -439,7 +437,7 @@ var out = "package "+pckg+";\n";
                     print_method(it.iinit,"new");
 
                 //deferred to gather getters and setters
-                var props = new Hash<{getter:Int,setter:Int,name:String,stat:Bool}>();
+                var props = new Map<String, {getter:Int,setter:Int,name:String,stat:Bool}>();
 
                 $(mixin do_traits(traits,statics) {
                     for(t in traits) {
@@ -501,7 +499,7 @@ var out = "package "+pckg+";\n";
                 #end
 
                 cdir(dir);
-                var fout = neko.io.File.write(path,false);
+                var fout = sys.io.File.write(path,false);
                 Lib.println("Writing '"+path+"'");
                 fout.writeString(out);
                 fout.flush();
@@ -519,10 +517,10 @@ var out = "package "+pckg+";\n";
     }
 
     static function cdir(dir:String) {
-        if(neko.FileSystem.exists(dir)) return;
+        if(sys.FileSystem.exists(dir)) return;
         if(dir=="") throw "wtf??";
         try {
-            neko.FileSystem.createDirectory(dir);
+            sys.FileSystem.createDirectory(dir);
             Lib.println("Creating directory '"+dir+"'");
         }catch(e:Dynamic) {
             if(dir.indexOf(#if windows "\\" #else "/" #end)!=-1) {
@@ -575,12 +573,12 @@ var out = "package "+pckg+";\n";
         }
     }
 
-    private static function doreport(abcdata:Bytes, ret:Array<SIZE>, cls:Hash<Int>) {
+    private static function doreport(abcdata:Bytes, ret:Array<SIZE>, cls:Map<String, Int>) {
         var reader = new flib.abc.Reader(new BytesInput(abcdata));
         var abc = reader.readABC();
 
-        var string = callback(string,abc);
-        var multiname = callback(multiname,abc);
+        var string = string.bind(abc);
+        var multiname = multiname.bind(abc);
 
         var names = new Array<String>();
         var cnames = new Array<String>();
@@ -704,8 +702,8 @@ var out = "package "+pckg+";\n";
 
         $(mixin getsets(instances)
             for(i in instances) {
-                var properties = new Hash<{x:Trait,y:Trait}>();
-                var flibrem = new Hash<Void>();
+                var properties = new Map<String, {x:Trait,y:Trait}>();
+                var flibrem = new Map<String, Void>();
 
                 for(t in i.traits) {
                     switch(t.data) {
@@ -798,7 +796,7 @@ var out = "package "+pckg+";\n";
 
 
         //maps old method index, to new method index
-        var methodset = new IntHash<Int>();
+        var methodset = new Map<Int, Int>();
         var ind = 0;
         for(i in methodid) methodset.set(i,ind++);
         /*

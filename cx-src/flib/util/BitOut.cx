@@ -1,37 +1,36 @@
 package flib.util;
 
-import haxe.Int32;
 import haxe.io.Output;
 import flib.util.BitFields;
 
 class BitOut {
 	public var o:Output;
-	
+
 	public var bit:Int;
 	public var cbyte:Int;
-	
+
 	private var writenBytes:Int;
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public function new(o:Output) {
 		this.o = o;
-		
+
 		writenBytes = 0;
 		bit = 0;
 		cbyte = 0;
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
-	private inline function writeBits(val:Int32,num:Int) {
+
+	private inline function writeBits(val:Int,num:Int) {
 		for(i in 0...num) {
 			var posa = 7-bit;
 			var pos2 = num-i-1;
-			var bitval = i31(ursh(and(val,lsh(one,pos2)),pos2));
-			
+			var bitval = (((val&(1<<pos2))>>>pos2));
+
 			cbyte |= bitval << posa;
-			
+
 			if(++bit==8) {
 				o.writeByte(cbyte);
 				writenBytes++;
@@ -40,27 +39,27 @@ class BitOut {
 			}
 		}
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function flushBits() {
-		if(bit!=0) writeBits(zero,8-bit);
+		if(bit!=0) writeBits(0,8-bit);
 		writenBytes = 0;
 	}
 	public inline function getBytes() {
 		if(bit!=0) return writenBytes + 1;
 		else return writenBytes;
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function writeBytes(bytes,pos,length) {
 		flushBits();
 		o.writeBytes(bytes,pos,length);
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function writeByte(v) {
 		flushBits();
 		o.writeByte(v);
@@ -73,9 +72,9 @@ class BitOut {
 		flushBits();
 		o.writeUInt24(v);
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function writeInt8(v) {
 		flushBits();
 		o.writeInt8(v);
@@ -92,21 +91,21 @@ class BitOut {
 		flushBits();
 		o.writeInt32(v);
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function writeDouble(v) {
 		flushBits();
 		o.writeDouble(v);
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
-	public inline function writeUnsigned(val:Int32,?nb:Int=0) {
+
+	public inline function writeUnsigned(val:Int,?nb:Int=0) {
 		if(nb==0) nb = BitFields.bits_unsigned(val);
 		writeBits(val,nb);
 	}
-	public inline function writeSigned(val:Int32,?nb:Int=0) {
+	public inline function writeSigned(val:Int,?nb:Int=0) {
 		if(nb==0) nb = BitFields.bits_signed(val);
 		writeBits(val,nb);
 	}
@@ -115,18 +114,18 @@ class BitOut {
 		if(nb==0) nb = BitFields.bits_signed(vt);
 		writeBits(vt,nb);
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	//le sigh, sign extending my arse adobe making negative integers need 5 bytes is retarded!
-	
-	public inline function encWriteUnsigned30(v:Int) encWriteUnsigned(i32(v&0x3fffffff))
-	public inline function encWriteUnsigned(v:Int32) {
+
+	public inline function encWriteUnsigned30(v:Int) encWriteUnsigned((v&0x3fffffff));
+	public inline function encWriteUnsigned(v:Int) {
 		encWriteSigned(v);
 	}
-	public inline function encWriteSigned(bv:Int32) {
-		var e = i31(ursh(bv,28));
-		var n = i31(and(bv,i32((1 << 28) - 1)));
+	public inline function encWriteSigned(bv:Int) {
+		var e = ((bv >>> 28));
+		var n = ((bv & ((1 << 28) - 1)));
 		var d = (n >> 21) & 0x7F;
 		var c = (n >> 14) & 0x7F;
 		var b = (n >> 7) & 0x7F;
@@ -149,20 +148,20 @@ class BitOut {
 		} else
 			writeByte(a);
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function writeFixed(val:Float) {
 		var top = Std.int(val);
 		var bot = Std.int((val - Std.int(val))*65536.0);
-		
+
 		writeUInt16(bot);
 		writeInt16(top);
 	}
 	public inline function writeFixed8(val:Float) {
 		var top = Std.int(val);
 		var bot = Std.int((val-Std.int(val))*256.0);
-		
+
 		writeByte(bot);
 		writeInt8(top);
 	}
@@ -185,7 +184,7 @@ class BitOut {
 					var expb = 0;
 					while(num< 1.0) { expb--; num*=2.0; }
 					while(num>=2.0) { expb++; num*=0.5; }
-					
+
 					var expb2 = expb+16;
 					if(expb2<0) writeUInt16(0);
 					else if(expb2 >= 0x1f) writeUInt16(0x7c00 | (sign<<15));
@@ -199,14 +198,14 @@ class BitOut {
 			}
 		}
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function writeString(v:String) {
 		for(i in 0...v.length) writeByte(v.charCodeAt(i));
 		writeByte(0);
 	}
-	
+
 	public inline function writeStringNum(v:String,num:Int) {
 		for(i in 0...num) writeByte(v.charCodeAt(i));
 	}

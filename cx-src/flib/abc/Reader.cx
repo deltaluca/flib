@@ -3,27 +3,26 @@ package flib.abc;
 import flib.abc.Types;
 $(import flib.util);
 import haxe.io.Input;
-import haxe.Int32;
 
 class Reader {
 	private var o:BitIn;
-	
+
 	public function new(o:Input) {
 		this.o = new BitIn(o);
 	}
-	
+
 	public function readABC() {
 		var minor = o.readUInt16();
 		var major = o.readUInt16();
 		var cpool = readCPool();
-		
+
 		$(mixin read_arr(count,closure) {
 			var cnt = count;
 			var ret = [];
 			for(i in 0...cnt) ret.push(closure);
 			ret;
 		});
-		
+
 		var methods = read_arr(o.encReadUnsigned30(),{
 			var pcount = o.encReadUnsigned30();
 			var retype = o.encReadUnsigned30();
@@ -35,7 +34,7 @@ class Reader {
 			var need_act     = (flags&0x02)!=0;
 			var need_rest    = (flags&0x04)!=0;
 			var set_dxna     = (flags&0x40)!=0;
-			
+
 			var options = [];
 			if((flags&0x08)!=0) {
 				var ocount = o.encReadUnsigned30();
@@ -48,7 +47,7 @@ class Reader {
 			var pnames = [];
 			if((flags&0x80)!=0)
 				for(i in 0...pcount) pnames.push(o.encReadUnsigned30());
-			
+
 			{
 				return_type: retype,
 				name: name,
@@ -77,26 +76,26 @@ class Reader {
 			var superc = o.encReadUnsigned30();
 			var flags = o.readByte();
 			var ns = if((flags&0x08)!=0) o.encReadUnsigned30() else 0;
-			
+
 			var count = o.encReadUnsigned30();
 			var interfaces = [];
 			for(i in 0...count) interfaces.push(o.encReadUnsigned30());
-			
+
 			var iinit = o.encReadUnsigned30();
-			
+
 			var count = o.encReadUnsigned30();
 			var traits = [];
 			for(i in 0...count) traits.push(readTrait());
-			
+
 			{name:name,superc:superc,ns:ns,iinit:iinit,flags:flags,interfaces:interfaces,traits:traits};
 		});
 		var classes = read_arr(instances.length,{
 			var cinit = o.encReadUnsigned30();
-			
+
 			var count = o.encReadUnsigned30();
 			var traits = [];
 			for(i in 0...count) traits.push(readTrait());
-			
+
 			{cinit:cinit,traits:traits};
 		});
 		var scripts = read_arr(o.encReadUnsigned30(),{
@@ -104,20 +103,20 @@ class Reader {
 			var count = o.encReadUnsigned30();
 			var traits = [];
 			for(i in 0...count) traits.push(readTrait());
-			
+
 			{init:init,traits:traits};
 		});
 		var mbodies = read_arr(o.encReadUnsigned30(),{
 			var method = o.encReadUnsigned30();
-			
+
 			var max_st = o.encReadUnsigned30();
 			var l_cnt = o.encReadUnsigned30();
 			var init_sc = o.encReadUnsigned30();
 			var sc_depth = o.encReadUnsigned30();
-			
+
 			var size = o.encReadUnsigned30();
-			var avm = o.read(i32(size));
-			
+			var avm = o.read((size));
+
 			var count = o.encReadUnsigned30();
 			var excs = [];
 			for(i in 0...count) excs.push({
@@ -128,19 +127,19 @@ class Reader {
 				var e = o.encReadUnsigned30();
 				{from:a,to:b,target:c,exc_type:d,var_name:e};
 			});
-			
+
 			var count = o.encReadUnsigned30();
 			var traits = [];
 			for(i in 0...count) traits.push(readTrait());
 
 			{method:method,max_st:max_st,l_cnt:l_cnt,init_sc:init_sc,sc_depth:sc_depth,avm:avm,exceptions:excs,traits:traits};
 		});
-		
+
 		return {
 			minor: minor,
 			major: major,
 			cpool: cpool,
-			
+
 			methods  : methods,
 			metadata : metadata,
 			instances: instances,
@@ -149,11 +148,11 @@ class Reader {
 			mbodies  : mbodies
 		};
 	}
-	
+
 	public function readTrait() {
 		var name = o.encReadUnsigned30();
 		var flag = o.readByte();
-		
+
 		var dx = (flag&0xf);
 		var data = if(dx==0 || dx==6) {
 			var a = o.encReadUnsigned30();
@@ -174,13 +173,13 @@ class Reader {
 			var b = o.encReadUnsigned30();
 			tdMethod([mtMethod,mtGetter,mtSetter][dx-1],a,b);
 		}
-		
+
 		var metadata = [];
 		if((flag&0x40)!=0) {
 			var count = o.encReadUnsigned30();
 			for(i in 0...count) metadata.push(o.encReadUnsigned30());
 		}
-	
+
 		return {name:name,metadata:metadata,data:data,final:(flag&0x10)!=0,overriden:(flag&0x20)!=0};
 	}
 
@@ -196,7 +195,7 @@ class Reader {
 			default: nsOther(o);
 		}
 	}
-	
+
 	public function readCPool() {
 		$(mixin read_arr(closure) {
 			var ret = [];
@@ -206,7 +205,7 @@ class Reader {
 				ret.push(closure);
 			ret;
 		});
-		
+
 		var ints    = read_arr(o.encReadSigned());
 		var uints   = read_arr(o.encReadUnsigned());
 		var doubles = read_arr(o.readDouble());
@@ -262,9 +261,10 @@ class Reader {
 					var params = [];
 					for(i in 0...count) params.push(o.encReadUnsigned30());
 					mGenericName(type,params);
+                default: mQName(false,0,0);
 			}
 		});
-		
+
 		return {
 			ints    : ints,
 			uints   : uints,

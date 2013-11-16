@@ -3,22 +3,21 @@ package flib.abc;
 import flib.abc.Types;
 $(import flib.util);
 import haxe.io.Output;
-import haxe.Int32;
 
 class Writer {
 	private var o:BitOut;
-	
+
 	public function new(o:Output) {
 		this.o = new BitOut(o);
 	}
-	
+
 	public function writeCPool(cpool:CPool) {
 		$(mixin write_arr(i,arr,closure) {
 			var count = arr.length; if(count!=0) count++;
 			o.encWriteUnsigned30(count);
 			for(i in arr) closure;
 		});
-		
+
 		write_arr(i,cpool.ints,o.encWriteSigned(i));
 		write_arr(i,cpool.uints,o.encWriteUnsigned(i));
 		write_arr(i,cpool.doubles,o.writeDouble(i));
@@ -57,9 +56,9 @@ class Writer {
 					for(i in p) o.encWriteUnsigned30(i);
 				default:
 			}
-		});	
+		});
 	}
-	
+
 	public function writeCTYPE(x:NSType) {
 		var ret = switch(x) {
 			case nsPrivateNs: 0x05;
@@ -73,7 +72,7 @@ class Writer {
 		}
 		o.writeByte(ret);
 	}
-	
+
 	public function writeTrait(t:Trait) {
 		o.encWriteUnsigned30(t.name);
 		var flag = if(t.metadata.length>0) 0x40 else 0;
@@ -108,17 +107,17 @@ class Writer {
 			for(i in t.metadata) o.encWriteUnsigned30(i);
 		}
 	}
-	
+
 	public function writeABC(abc:ABC) {
 		o.writeUInt16(abc.minor);
 		o.writeUInt16(abc.major);
 		writeCPool(abc.cpool);
-		
+
 		$(mixin write_arr(i,arr,count,closure) {
 			if(count) o.encWriteUnsigned30(arr.length);
 			for(i in arr) closure;
 		});
-		
+
 		write_arr(i,abc.methods,true,{
 			o.encWriteUnsigned30(i.param_types.length);
 			o.encWriteUnsigned30(i.return_type);
@@ -132,7 +131,7 @@ class Writer {
 			if(i.optionals.length>0) flags |= 8;
 			if(i.param_names.length>0) flags |= 0x80;
 			o.writeByte(flags);
-			
+
 			if(i.optionals.length>0) {
 				o.encWriteUnsigned30(i.optionals.length);
 				for(x in i.optionals) {
@@ -142,7 +141,7 @@ class Writer {
 			}
 			for(x in i.param_names) o.encWriteUnsigned30(x);
 		});
-		
+
 		write_arr(i,abc.metadata,true,{
 			o.encWriteUnsigned30(i.name);
 			o.encWriteUnsigned30(i.items.length);
@@ -151,7 +150,7 @@ class Writer {
 				if(x.key!=0) o.encWriteUnsigned30(x.value);
 			}
 		});
-		
+
 		write_arr(i,abc.instances,true,{
 			o.encWriteUnsigned30(i.name);
 			o.encWriteUnsigned30(i.superc);
@@ -169,13 +168,13 @@ class Writer {
 			o.encWriteUnsigned30(i.traits.length);
 			for(x in i.traits) writeTrait(x);
 		});
-		
+
 		write_arr(i,abc.scripts,true,{
 			o.encWriteUnsigned30(i.init);
 			o.encWriteUnsigned30(i.traits.length);
 			for(x in i.traits) writeTrait(x);
 		});
-		
+
 		write_arr(i,abc.mbodies,true,{
 			o.encWriteUnsigned30(i.method);
 			o.encWriteUnsigned30(i.max_st);

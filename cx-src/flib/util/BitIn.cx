@@ -1,73 +1,72 @@
 package flib.util;
 
-import haxe.Int32;
 import haxe.io.Input;
 import flib.util.BitFields;
 
 class BitIn {
 	public var o:Input;
-	
+
 	public var bit:Int;
 	public var cbyte:Int;
-	
+
 	private var readBytes:Int;
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public function new(o:Input) {
 		this.o = o;
-		
+
 		readBytes = 0;
 		bit = 0;
 		cbyte = 0;
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	private inline function readBits(num:Int) {
-		var ret = zero;
+		var ret = 0;
 		for(i in 0...num) {
 			if(bit==0) {
 				cbyte = o.readByte();
 				readBytes++;
 			}
-			
+
 			var pos = 7-bit;
 			var mask = 1 << pos;
-			var bitval = i32((cbyte & mask) >>> pos);
-			ret = or(ret, lsh(bitval, num-i-1));
-			
+			var bitval = ((cbyte & mask) >>> pos);
+            ret |= (bitval << (num-i-1));
+
 			if(++bit==8)
 				bit = 0;
 		}
 		return ret;
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function flushBits() {
 		if(bit!=0) readBits(8-bit);
 		readBytes = 0;
 	}
-	
+
 	public inline function getBytes() {
 		return readBytes;
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
-	public inline function read(num:Int32) {
+
+	public inline function read(num:Int) {
 		flushBits();
-		if(lt(num,i32(0x7fff,0xffff)) && geq(num,zero)) return o.read(i31(num));
+        if (num < 0x7fffffff && num >= 0) return o.read(num);
 		else return null;
 	}
 	public inline function readAll() {
 		flushBits();
 		return o.readAll();
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function readByte() {
 		flushBits();
 		return o.readByte();
@@ -80,9 +79,9 @@ class BitIn {
 		flushBits();
 		return o.readUInt24();
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function readInt8() {
 		flushBits();
 		return o.readInt8();
@@ -99,83 +98,77 @@ class BitIn {
 		flushBits();
 		return o.readInt32();
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function readDouble() {
 		flushBits();
 		return o.readDouble();
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
-	public inline function readUnsigned(nb:Int) return readBits(nb)
+
+	public inline function readUnsigned(nb:Int) return readBits(nb);
 	public inline function readSigned(nb:Int) {
-		if(nb==0) return zero;
+		if(nb==0) return 0;
 		else {
 			var uv = readBits(nb);
-			var sign = ursh(and(uv,lsh(one,nb-1)),nb-1);
-			for(i in nb...32) uv = or(uv,lsh(sign,i));
+            var sign = ((1 << (nb - 1)) & uv) >>> (nb - 1);
+			for(i in nb...32) uv |= sign << i;
 			return uv;
 		}
 	}
-	public inline function readFloating(nb:Int) {
+	public inline function readFloating(nb:Int):Float {
 		if(nb==0) return 0.0;
 		else {
 			var uv = readSigned(nb);
-			var neg = lt(uv,zero);
-			if(neg) uv = neg(uv);
-			
-			var top = i31(ursh(uv,16));
-			var bot = i31(and(uv,i32(0xffff)));
-			
-			var val = bot / 65536.0 + top;
-			if(neg) val = -val;
-			return val;
+			var neg = uv < 0;
+			if(neg) uv = -uv;
+			return uv;
 		}
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
-	public inline function encReadUnsigned30() return i31(and(encReadUnsigned(),i32(0x3fff,0xffff)))
+
+    public inline function encReadUnsigned30() return encReadUnsigned() & 0x3fffffff;
 	public inline function encReadUnsigned() {
 		//le sigh adobe, your contradictions regarding s32 astound and horrify me!
 		return encReadSigned();
 	}
-	private inline function pad(num:Int32,bit:Int) {
-		if neq(zero,and(num,lsh(one,bit-1)))
-			num = or(num,lsh(ursh(none,bit),bit));
+	private inline function pad(num:Int,bit:Int) {
+        if (num & (1 << (bit - 1)) != 0)
+            num |= (-1 >>> bit) << bit;
 		return num;
 	}
 	public inline function encReadSigned() {
 		var a = readByte();
-		if(a<128) return i32(a);
+		if(a<128) return a;
 		else {
 			a &= 0x7f;
 			var b = readByte();
-			if(b<128) return i32((b<<7)|a);
+			if(b<128) return (b << 7) | a;
 			else {
 				b &= 0x7f;
 				var c = readByte();
-				if(c<128) return i32((c<<14)|(b<<7)|a);
+				if(c<128) return (c<<14)|(b<<7)|a;
 				else {
 					c &= 0x7f;
 					var d = readByte();
-					if(d<128) return i32((d<<21)|(c<<14)|(b<<7)|a);
+					if(d<128) return (d<<21)|(c<<14)|(b<<7)|a;
 					else {
 						d &= 0x7f;
 						var e = readByte();
-						var small = i32((d<<21)|(c<<14)|(b<<7)|a);
-						var big = lsh(i32(e),28);
-						return or(big,small);
+						var small = (d<<21)|(c<<14)|(b<<7)|a;
+                        var big = e << 28;
+                        return big | small;
 					}
 				}
 			}
 		}
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function readFixed() {
 		var bot = readUInt16();
 		var top = readInt16();
@@ -189,11 +182,11 @@ class BitIn {
 	public inline function readFloat16() {
 		var b = readByte();
 		var a = readByte();
-		
+
 		var sign = a>>>7;
 		var expo = (a&0x7c) >>> 2;
 		var mant = ((a&0x03)<<8) | b;
-		
+
 		if(expo==2) {
 			if(mant==0) return 0.0;
 			else	    return Math.pow(-1,sign)*mant/1024.0*Math.pow(2,-15);
@@ -206,9 +199,9 @@ class BitIn {
 		}else
 			return Math.pow(-1,sign)*(1+mant/1024.0)*Math.pow(2,expo-16);
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public inline function readString() {
 		var ret = new StringBuf();
 		var ch;

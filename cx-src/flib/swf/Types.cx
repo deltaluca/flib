@@ -1,18 +1,17 @@
 package flib.swf;
 
 import haxe.io.Bytes;
-import haxe.Int32;
 
 typedef Swf = {
 	var compress:Bool;
 	var version:Int;
-	
+
 	var width:Int;
 	var height:Int;
-	
+
 	var framerate:Float;
 	var framecount:Int;
-	
+
 	var tags:Array<Tag>;
 }
 

@@ -9,38 +9,37 @@ import haxe.io.Input;
 import haxe.io.BytesOutput;
 import haxe.io.BytesInput;
 import haxe.io.Bytes;
-import haxe.Int32;
 
 class Reader {
 	private var o:BitIn;
-	
+
 	public function new(o:Input) {
 		this.o = new BitIn(o);
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	public function readSwf() {
 		var c0 = o.readByte(); var c1 = o.readByte(); var c2 = o.readByte();
 		if ((c0 != 67 && c0 != 70) || c1 != 87 || c2 != 83)
 			throw "Swf ID =/= (C|F)WS";
 		var compressed = c0 == 67;
-		
+
 		var version = o.readByte();
 		var fileLength = o.readInt32();
-		
+
 		if(compressed) {
 			var rest = o.readAll();
 			var bar = new BytesOutput();
 			bar.writeBytes(rest,0,rest.length);
 			o = new BitIn(new BytesInput(Zip.uncompress(bar.getBytes())));
 		}
-		
+
 		var stage = readRect();
 		var framerate = o.readFixed8();
 		var framecount = o.readUInt16();
 		var tags = readTagList();
-		
+
 		return {
 			compress   : compressed,
 			version    : version,
@@ -51,9 +50,9 @@ class Reader {
 			tags       : tags
 		};
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	private function readTagList() {
 		var tags = new Array<Tag>();
 		while(true) {
@@ -66,27 +65,27 @@ class Reader {
 		}
 		return tags;
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	private function readTag() {
 		var tagcl = o.readUInt16();
 		var tagc = tagcl >>> 6;
-		var tagl = i32(tagcl & 0x3f);
-		if(i31(tagl)==0x3f) tagl = o.readInt32();
-		
+		var tagl = (tagcl & 0x3f);
+		if((tagl)==0x3f) tagl = o.readInt32();
+
 		return switch(tagc) {
 			default:
 				tUnknown(tagc, o.read(tagl));
 			case TagId.FileAttributes:
 				o.flushBits();
 				o.readUnsigned(1);
-				var dblit = eq(o.readUnsigned(1),one);
-				var ugpu  = eq(o.readUnsigned(1),one);
-				var hmeta = eq(o.readUnsigned(1),one);
-				var uas3  = eq(o.readUnsigned(1),one);
+				var dblit = (o.readUnsigned(1) == 1);
+				var ugpu  = (o.readUnsigned(1) == 1);
+				var hmeta = (o.readUnsigned(1) == 1);
+				var uas3  = (o.readUnsigned(1) == 1);
 				o.readUnsigned(2);
-				var unet  = eq(o.readUnsigned(1),one);
+				var unet  = (o.readUnsigned(1) == 1);
 				o.readUnsigned(24);
 				tFileAttributes(dblit,ugpu,hmeta,uas3,unet);
 			case TagId.End:
@@ -94,14 +93,14 @@ class Reader {
 			case TagId.DoABC:
 				tDoABC(o.read(tagl));
 			case TagId.DefABC:
-				var lazy = eq(o.readInt32(),one);
+				var lazy = o.readInt32() == 1;
 				var name = o.readString();
-				tDefABC(lazy,name,o.read(sub(tagl,i32(4+name.length+1))));
+				tDefABC(lazy,name,o.read(tagl - (4+name.length+1)));
 			case TagId.DefineBinaryData:
 				var tag = o.readUInt16();
 				o.readInt32();
-				var data = o.read(sub(tagl,Int32.ofInt(8)));
-				tDefineBinaryData(tag,data); 
+				var data = o.read(tagl - 8);
+				tDefineBinaryData(tag,data);
 			case TagId.SetBackgroundColor:
 				var r = o.readByte();
 				var g = o.readByte();
@@ -120,17 +119,17 @@ class Reader {
 				tSymbolClass(symbols);
 		};
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
-	
+
 	private inline function readRect() {
 		o.flushBits();
-		var nb = i31(o.readUnsigned(5));
+		var nb = (o.readUnsigned(5));
 		return {
-			xmin : i31(o.readSigned(nb)),
-			xmax : i31(o.readSigned(nb)),
-			ymin : i31(o.readSigned(nb)),
-			ymax : i31(o.readSigned(nb))
+			xmin : (o.readSigned(nb)),
+			xmax : (o.readSigned(nb)),
+			ymin : (o.readSigned(nb)),
+			ymax : (o.readSigned(nb))
 		}
 	}
 }

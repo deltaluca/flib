@@ -1,6 +1,5 @@
 package flib.abc;
 
-import haxe.Int32;
 import haxe.io.Bytes;
 
 typedef ABC = {
@@ -16,8 +15,8 @@ typedef ABC = {
 }
 
 typedef CPool = {
-	var ints   :Array<Int32>;
-	var uints  :Array<Int32>;
+	var ints   :Array<Int>;
+	var uints  :Array<Int>;
 	var doubles:Array<Float>;
 	var strings:Array<String>;
 	var nspaces:Array<Namespace>;
@@ -28,13 +27,13 @@ typedef CPool = {
 typedef Method = {
 	var return_type:Int;
 	var name:Int;
-	
+
 	var need_arg_obj:Bool; var need_act:Bool; var need_rest:Bool;
 	var set_dxns:Bool;
-	
+
 	var param_types:Array<Int>;
 	var param_names:Array<Int>;
-	
+
 	var optionals:Array<Option>;
 }
 
@@ -58,7 +57,7 @@ typedef Instance = {
 	var ns:Int;
 	var iinit:Int;
 	var flags:Int;
-	
+
 	var interfaces:Array<Int>;
 	var traits:Array<Trait>;
 }
